@@ -1,0 +1,2222 @@
+Microsoft (R) Macro Assembler Version 6.15.8803		    12/04/23 15:54:08
+C:\CS2290\Lab10\Part1 Full Tron\FullTron - Lab10Part1.asm    Page 1 - 1
+
+
+				INCLUDE Irvine32.inc
+			      C ; Include file for Irvine32.lib             (Irvine32.inc)
+			      C 
+			      C ;OPTION CASEMAP:NONE		; optional: make identifiers case-sensitive
+			      C 
+			      C INCLUDE SmallWin.inc		; MS-Windows prototypes, structures, and constants
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C INCLUDE VirtualKeys.inc		; (4/6/03)
+			      C ; VirtualKeys.inc
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C 
+			      C .NOLIST
+			      C .LIST
+			      C 
+
+ 00000000			.data
+ 00000000 54 52 4F 4E 00	tronTitle BYTE "TRON",0
+ 00000005 3E 3E 3E 3E 3E	controlMenu BYTE ">>>>>CONTROLS<<<<<",0
+	   43 4F 4E 54 52
+	   4F 4C 53 3C 3C
+	   3C 3C 3C 00
+ 00000018 53 50 41 43 45	spc BYTE         "SPACEBAR  : start/pause",0
+	   42 41 52 20 20
+	   3A 20 73 74 61
+	   72 74 2F 70 61
+	   75 73 65 00
+ 00000030 45 53 43 41 50	escp BYTE        "ESCAPE KEY: quit game",0
+	   45 20 4B 45 59
+	   3A 20 71 75 69
+	   74 20 67 61 6D
+	   65 00
+ 00000046 41 52 52 4F 57	arro BYTE        "ARROW KEYS: control light-bike",0
+	   20 4B 45 59 53
+	   3A 20 63 6F 6E
+	   74 72 6F 6C 20
+	   6C 69 67 68 74
+	   2D 62 69 6B 65
+	   00
+ 00000065 70 75 73 68 20	pushSpace BYTE   "push SPACE to start TRON",0
+	   53 50 41 43 45
+	   20 74 6F 20 73
+	   74 61 72 74 20
+	   54 52 4F 4E 00
+ 0000007E 70 72 65 73 73	restart BYTE     "press ENTER to restart TRON or press ESCAPE to quit TRON",0
+	   20 45 4E 54 45
+	   52 20 74 6F 20
+	   72 65 73 74 61
+	   72 74 20 54 52
+	   4F 4E 20 6F 72
+	   20 70 72 65 73
+	   73 20 45 53 43
+	   41 50 45 20 74
+	   6F 20 71 75 69
+	   74 20 54 52 4F
+	   4E 00
+ 000000B7 53 43 4F 52 45	scoreStr BYTE    "SCORE : ",0
+	   20 3A 20 00
+ 000000C0 4C 45 56 45 4C	levelStr BYTE    "LEVEL : ",0
+	   20 3A 20 00
+ 000000C9 54 4F 54 41 4C	totalStr BYTE    "TOTAL : ",0
+	   20 3A 20 00
+ 000000D2 7C			bikeVert BYTE 124 ;complex bike and trail pieces to next comment
+ 000000D3 C4			bikeHorz BYTE 196
+ 000000D4 BF			bikeLeftDown BYTE 191
+ 000000D5 C0			bikeRightUp BYTE 192
+ 000000D6 D9			bikeLeftUp BYTE 217
+ 000000D7 DA			bikeRightDown BYTE 218
+ 000000D8 BA			trailVert BYTE 186
+ 000000D9 CD			trailHorz BYTE 205
+ 000000DA BB			trailLeftDown BYTE 187
+ 000000DB BC			trailLeftUp BYTE 188
+ 000000DC C8			trailRightUp BYTE 200
+ 000000DD C9			trailRightDown BYTE 201 ;down to here is the complex bike and trail stuff
+
+ 000000DE DC			wallTop BYTE 220   ;top half block
+ 000000DF DF			wallBot BYTE 223   ;bottom half block
+ 000000E0 DB			wallBlock BYTE 219 ;regular full block
+ 000000E1 B1			crash BYTE 177     ;distorted full block
+ 000000E2 20			space BYTE 32
+
+ 000000E3 4A			leftDL BYTE 74
+ 000000E4 4B			rightDL BYTE 75
+ 000000E5 00			leftDH BYTE 0
+ 000000E6 00			rightDH BYTE 0
+
+ 000000E7 58			bikeDL BYTE 88
+ 000000E8 1F			bikeDH BYTE 31
+ 000000E9 64			delayBike BYTE 100
+ 000000EA 0A			delayBackground BYTE 10
+ 000000EB 32			delayReadKey BYTE 50
+
+ 000000EC 00			crashEnd BYTE 0
+ 000000ED 3C			rows BYTE 60
+ 000000EE 92			cols BYTE 146
+ 000000EF 00000000		totalScore DWORD 0
+ 000000F3 00000000		score DWORD 0
+ 000000F7 00000000		scoreCheck DWORD 0
+
+ 000000FB  00002238 [		board BYTE 8760 DUP(0);2D array representation of the board, 146X60 = 8760 tiles. 
+	    00
+	   ]
+
+				;random rectangle stuff
+				;box char's
+ 00002333 00			nextLevel BYTE 0
+ 00002334 C9			topLeft BYTE 201
+ 00002335 CD			horiz BYTE 205
+ 00002336 BB			topRight BYTE 187
+ 00002337 BA			side BYTE 186
+ 00002338 FF			spaceRect BYTE 255
+ 00002339 C8			botLeft BYTE 200
+ 0000233A BC			botRight BYTE 188
+
+				;coordinate stuff
+ 0000233B 93			borderSide BYTE 147
+ 0000233C 3C			borderBot BYTE 60
+ 0000233D 00			sideScreen BYTE 0
+ 0000233E 00			botScreen BYTE 0
+
+ 0000233F 00			ranX BYTE 0
+ 00002340 00			ranY BYTE 0
+
+ 00000000			.code
+ 00000000			main PROC
+ 00000000  E8 00000000 E		call Randomize ;seed for randomrange
+ 00000005  E8 00000E2E			call showTRON
+ 0000000A			playGame:
+ 0000000A  E8 00000E5D			call drawBorder
+					
+ 0000000F  52				push edx
+ 00000010  50				push eax
+ 00000011  B2 12			mov dl,18
+ 00000013  B6 40			mov dh,64
+ 00000015  E8 00000000 E		call gotoxy
+ 0000001A  B8 0000000F			mov eax, white+(black*16)
+ 0000001F  E8 00000000 E		call SetTextColor
+ 00000024  0F B6 05			movzx eax,nextLevel
+	   00002333 R
+ 0000002B  E8 00000000 E		call writeDec
+ 00000030  B8 00000003			mov eax, cyan+(black*16)
+ 00000035  E8 00000000 E		call SetTextColor
+ 0000003A  58				pop eax
+ 0000003B  5A				pop edx
+					
+ 0000003C  80 3D 00002333 R		cmp nextLevel,0
+	   00
+ 00000043  74 0A			je aroundObstacle
+ 00000045  E8 00000F8A			call createObstacle
+ 0000004A  E8 00001123			call startZone
+					
+ 0000004F			aroundObstacle:
+ 0000004F  E8 00000D54			call controls
+ 00000054  E8 00000CA0			call startGame
+ 00000059  E8 000000BE		call changeBoard
+ 0000005E  E8 0000020B			call lightBike
+ 00000063  80 FC 01			cmp ah,001h
+ 00000066  0F 84 0000009A		je endGame
+					
+ 0000006C  B2 32			mov dl,50
+ 0000006E  B6 3E			mov dh,62
+ 00000070  E8 00000000 E		call gotoxy
+ 00000075  B8 00000003			mov eax, cyan+(black*16)
+ 0000007A  E8 00000000 E		call SetTextColor
+ 0000007F  BA 0000007E R		mov edx,OFFSET restart
+ 00000084  E8 00000000 E		call writeString
+					
+ 00000089			redo:
+ 00000089  0F B6 05			movzx eax,delayReadKey
+	   000000EB R
+ 00000090  E8 00000000 E		call delay
+ 00000095  E8 00000000 E		call readKey
+ 0000009A  74 ED			jz redo
+					
+ 0000009C  80 FC 1C			cmp ah,01Ch
+ 0000009F  75 60			jne aroundEnter
+ 000000A1  C6 05 000000E7 R		mov bikeDL,88
+	   58
+ 000000A8  C6 05 000000E8 R		mov bikeDH,31
+	   1F
+ 000000AF  C6 05 000000E3 R		mov leftDL,74
+	   4A
+ 000000B6  C6 05 000000E4 R		mov rightDL,75
+	   4B
+ 000000BD  C6 05 000000E5 R		mov leftDH,0
+	   00
+ 000000C4  C6 05 000000E6 R		mov rightDH,0
+	   00
+ 000000CB  B2 32			mov dl,50
+ 000000CD  B6 3E			mov dh,62
+ 000000CF  E8 00000000 E		call gotoxy
+ 000000D4  0F B6 05			movzx eax,space
+	   000000E2 R
+ 000000DB  B9 0000003C			mov ecx,60
+ 000000E0			erase:
+ 000000E0  E8 00000000 E		call writeChar
+ 000000E5  E2 F9		loop erase
+
+ 000000E7  83 3D 000000F3 R		cmp score,20 ;make larger after testing
+	   14
+ 000000EE  7C 07			jl aroundNextLevel
+ 000000F0  80 05 00002333 R		add nextLevel,1
+	   01
+ 000000F7			aroundNextLevel:
+ 000000F7  E8 00000063			call resetBoard
+ 000000FC  E9 FFFFFF09			jmp playgame
+ 00000101			aroundEnter:
+					
+ 00000101  80 FC 01			cmp ah,001h
+ 00000104  75 83			jne redo
+ 00000106			endGame:
+ 00000106  B8 0000000F			mov eax, white+(black*16)
+ 0000010B  E8 00000000 E		call SetTextColor
+ 00000110  E8 00000000 E		call Clrscr
+				exit
+
+ 0000011C			main ENDP
+
+
+ 0000011C			changeBoard PROC
+ 0000011C  60				pushad
+					
+ 0000011D  BE 000000FB R		mov esi,OFFSET board ;setup registers for 2d array math
+ 00000122  0F B6 05			movzx eax,bikeDH ;# of rows is 60
+	   000000E8 R
+ 00000129  BB 00000092			mov ebx,146      ;# of columns is 146 (2 to 147)
+					
+ 0000012E  F7 E3			mul ebx ;multiplys al, which has the row the bike is in, with bl, which has the number of columns
+ 00000130  0F B6 1D			movzx ebx,bikeDL
+	   000000E7 R
+ 00000137  03 F0			add esi,eax
+ 00000139  03 F3			add esi,ebx ;esi will have board OFFSET + (currentRow * #columns) + currentColumn
+					
+ 0000013B  80 3E 01			cmp BYTE ptr [esi],1
+ 0000013E  75 15			jne noCrash
+ 00000140  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000147  E8 00000000 E		call writeChar
+ 0000014C  C6 05 000000EC R		mov crashEnd,1
+	   01
+ 00000153  EB 08			jmp crashed
+ 00000155			noCrash:
+ 00000155  E8 00000091			call changeScore
+					;add score,100 ;test end condition
+ 0000015A  C6 06 01			mov BYTE ptr [esi],1
+ 0000015D			crashed:	
+ 0000015D  61				popad
+ 0000015E  C3			RET
+ 0000015F			changeBoard ENDP
+
+
+ 0000015F			resetBoard PROC
+ 0000015F  60				pushad
+					
+ 00000160  B8 00000000			mov eax,0
+					
+ 00000165  83 3D 000000F3 R		cmp score,20
+	   14
+ 0000016C  7D 2D			jge continue
+ 0000016E  C7 05 000000EF R		mov totalScore,0
+	   00000000
+ 00000178  B2 12			mov dl,18
+ 0000017A  B6 41			mov dh,65
+ 0000017C  E8 00000000 E		call gotoxy
+ 00000181  B9 00000004			mov ecx,4
+ 00000186  0F B6 05			movzx eax,space
+	   000000E2 R
+ 0000018D			eraseTotal:
+ 0000018D  E8 00000000 E		call writeChar
+ 00000192  E2 F9		loop eraseTotal
+ 00000194  C6 05 00002333 R		mov nextLevel,0
+	   00
+ 0000019B			continue:
+					
+ 0000019B  C6 05 000000EC R		mov crashEnd,0
+	   00
+ 000001A2  C7 05 000000F3 R		mov score,0
+	   00000000
+ 000001AC  C7 05 000000F7 R		mov scoreCheck,0
+	   00000000
+ 000001B6  C6 05 000000E9 R		mov delayBike,100 ;make 1000 for actual game, 100 just to test
+	   64
+ 000001BD  B2 12			mov dl,18
+ 000001BF  B6 42			mov dh,66
+ 000001C1  E8 00000000 E		call gotoxy
+ 000001C6  B9 00000004			mov ecx,4
+ 000001CB  0F B6 05			movzx eax,space
+	   000000E2 R
+ 000001D2			eraseScore:
+ 000001D2  E8 00000000 E		call writeChar
+ 000001D7  E2 F9		loop eraseScore
+					
+ 000001D9  BE 000000FB R		mov esi,OFFSET board
+
+ 000001DE  B9 00002238			mov ecx,lengthof board
+ 000001E3			reset:
+ 000001E3  C6 06 00			mov BYTE ptr [esi],0
+					;movzx eax, byte ptr [esi]
+					;call writedec
+					;call crlf
+ 000001E6  46				inc esi
+ 000001E7  E2 FA		loop reset
+
+ 000001E9  61				popad
+ 000001EA  C3			RET
+ 000001EB			resetBoard ENDP
+
+
+ 000001EB			changeScore PROC
+ 000001EB  60				pushad
+					
+ 000001EC  B8 0000000F			mov eax, white+(black*16)
+ 000001F1  E8 00000000 E		call SetTextColor
+					
+ 000001F6  B2 12			mov dl,18
+ 000001F8  B6 41			mov dh,65
+ 000001FA  E8 00000000 E		call gotoxy
+ 000001FF  A1 000000EF R		mov eax,totalScore
+ 00000204  E8 00000000 E		call writeDec
+					
+ 00000209  B2 12			mov dl,18
+ 0000020B  B6 42			mov dh,66
+ 0000020D  E8 00000000 E		call gotoxy
+ 00000212  A1 000000F3 R		mov eax,score
+ 00000217  E8 00000000 E		call writeDec
+					
+ 0000021C  83 3D 000000F7 R		cmp scoreCheck,100 ;make 1000 for actual game, 100 just to test
+	   64
+ 00000223  75 1A			jne cont
+ 00000225  C7 05 000000F7 R		mov scoreCheck,0
+	   00000000
+ 0000022F  80 3D 000000E9 R		cmp delayBike,10
+	   0A
+ 00000236  74 07			je cont
+ 00000238  80 2D 000000E9 R		sub delayBike,10
+	   0A
+					
+ 0000023F			cont:
+ 0000023F  FF 05 000000F3 R		inc score
+ 00000245  FF 05 000000EF R		inc totalScore
+ 0000024B  FF 05 000000F7 R		inc scoreCheck
+					
+ 00000251  B8 0000007D			mov eax, lightmagenta+(lightgray*16)
+ 00000256  E8 00000000 E		call SetTextColor
+					
+ 0000025B  8A 15 000000E7 R		mov dl,bikeDL
+ 00000261  8A 35 000000E8 R		mov dh,bikeDH
+ 00000267  E8 00000000 E		call gotoxy
+
+ 0000026C  61				popad
+ 0000026D  C3			RET
+ 0000026E			changeScore ENDP
+
+
+ 0000026E			lightBike PROC
+					;jmp moveLeft ;randomize starting direction here
+ 0000026E  B8 00000004			mov eax,4
+ 00000273  E8 00000000 E		call randomRange ;0-3
+					
+ 00000278  83 F8 00			cmp eax,0
+ 0000027B  75 05			jne notLeft
+ 0000027D  E9 000001EE			jmp moveLeft
+ 00000282			notLeft:
+					
+ 00000282  83 F8 01			cmp eax,1
+ 00000285  75 05			jne notRight
+ 00000287  E9 0000047C			jmp moveRight
+ 0000028C			notRight:
+
+ 0000028C  83 F8 02			cmp eax,2
+ 0000028F  75 05			jne notUp
+ 00000291  E9 00000716			jmp moveUp
+ 00000296			notUp:
+ 00000296  E9 000009B1			jmp moveDown
+					
+ 0000029B			turnUpLeft:
+ 0000029B  8A 15 000000E7 R		mov dl,bikeDL
+ 000002A1  8A 35 000000E8 R		mov dh,bikeDH
+ 000002A7  E8 00000000 E		call gotoxy
+ 000002AC  0F B6 05			movzx eax,trailVert ;draw the trail where the bike was
+	   000000D8 R
+ 000002B3  E8 00000000 E		call writeChar
+ 000002B8			quickUpLeft:
+ 000002B8  FE 0D 000000E8 R		dec bikeDH
+ 000002BE  8A 35 000000E8 R		mov dh,bikeDH
+ 000002C4  80 FE 00			cmp dh,0 ;check if crash top wall
+ 000002C7  75 16			jne noUpLeftCrash
+ 000002C9  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 000002D0  E8 00000000 E		call gotoxy
+ 000002D5  E8 00000000 E		call writeChar
+ 000002DA  E9 00000A19		jmp done
+					
+ 000002DF			noUpLeftCrash:
+ 000002DF  E8 00000000 E		call gotoxy
+ 000002E4  0F B6 05			movzx eax,bikeLeftDown ;draw the up-left turn bike
+	   000000D4 R
+ 000002EB  E8 00000000 E		call writeChar
+ 000002F0  E8 FFFFFE27		call changeBoard
+ 000002F5  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 000002FF  0F 8D 000009F3	jge done
+ 00000305  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 0000030C  0F 84 000009E6	je done
+					
+ 00000312  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000319  E8 00000000 E		call delay
+					
+ 0000031E  E8 00000000 E		call gotoxy
+ 00000323  0F B6 05			movzx eax,trailLeftDown ;draw the up-left trail
+	   000000DA R
+ 0000032A  E8 00000000 E		call writeChar
+					
+ 0000032F  E8 00000000 E		call readKey
+ 00000334  74 40			jz contTurnLeft1
+					
+ 00000336  8A 35 000000E8 R		mov dh,bikeDH
+ 0000033C  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 00000342  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000345  75 05			jne contLeftEscape1
+ 00000347  E9 000009AC		jmp done
+ 0000034C			contLeftEscape1:
+					
+ 0000034C  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 0000034F  75 05			jne contLeftPause1
+ 00000351  E8 00000A3B			call pauseGame
+ 00000356			contLeftPause1:
+					
+ 00000356  80 FC 48			cmp ah,048h ;up arrow pressed, turn up
+ 00000359  75 0B			jne contLeftUp1
+ 0000035B  8A 35 000000E8 R		mov dh,bikeDH
+ 00000361  E9 0000056E			jmp quickLeftUp
+ 00000366			contLeftUp1:
+					
+ 00000366  80 FC 50			cmp ah,050h ;down arrow pressed, turn down
+ 00000369  75 0B			jne contLeftDown1
+ 0000036B  8A 35 000000E8 R		mov dh,bikeDH
+ 00000371  E9 000007FE			jmp quickLeftDown
+ 00000376			contLeftDown1:
+ 00000376			contTurnLeft1:
+ 00000376  8A 35 000000E8 R		mov dh,bikeDH
+ 0000037C  8A 15 000000E7 R		mov dl,bikeDL
+ 00000382  E9 00000106			jmp afterTurnLeft
+
+ 00000387			turnDownLeft:
+ 00000387  8A 15 000000E7 R		mov dl,bikeDL
+ 0000038D  8A 35 000000E8 R		mov dh,bikeDH
+ 00000393  E8 00000000 E		call gotoxy
+ 00000398  0F B6 05			movzx eax,trailVert ;draw the trail where the bike was
+	   000000D8 R
+ 0000039F  E8 00000000 E		call writeChar
+ 000003A4			quickDownLeft:
+ 000003A4  FE 05 000000E8 R		inc bikeDH
+ 000003AA  8A 35 000000E8 R		mov dh,bikeDH
+ 000003B0  80 FE 3D			cmp dh,61 ;check if crash bottom wall
+ 000003B3  75 16			jne noDownLeftCrash
+ 000003B5  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 000003BC  E8 00000000 E		call gotoxy
+ 000003C1  E8 00000000 E		call writeChar
+ 000003C6  E9 0000092D		jmp done
+					
+ 000003CB			noDownLeftCrash:	
+ 000003CB  E8 00000000 E		call gotoxy
+ 000003D0  0F B6 05			movzx eax,bikeLeftUp ;draw the down-left turn bike
+	   000000D6 R
+ 000003D7  E8 00000000 E		call writeChar
+ 000003DC  E8 FFFFFD3B		call changeBoard
+ 000003E1  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 000003EB  0F 8D 00000907	jge done
+ 000003F1  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 000003F8  0F 84 000008FA	je done
+					
+ 000003FE  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000405  E8 00000000 E		call delay
+					
+ 0000040A  E8 00000000 E		call gotoxy
+ 0000040F  0F B6 05			movzx eax,trailLeftUp ;draw the down-left trail
+	   000000DB R
+ 00000416  E8 00000000 E		call writeChar
+					
+ 0000041B  E8 00000000 E		call readKey
+ 00000420  74 40			jz contTurnLeft2
+					
+ 00000422  8A 35 000000E8 R		mov dh,bikeDH
+ 00000428  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 0000042E  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000431  75 05			jne contLeftEscape2
+ 00000433  E9 000008C0		jmp done
+ 00000438			contLeftEscape2:
+					
+ 00000438  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 0000043B  75 05			jne contLeftPause2
+ 0000043D  E8 0000094F			call pauseGame
+ 00000442			contLeftPause2:
+					
+ 00000442  80 FC 48			cmp ah,048h ;up arrow pressed, turn up
+ 00000445  75 0B			jne contLeftUp2
+ 00000447  8A 35 000000E8 R		mov dh,bikeDH
+ 0000044D  E9 00000482			jmp quickLeftUp
+ 00000452			contLeftUp2:
+
+ 00000452  80 FC 50			cmp ah,050h ;down arrow pressed, turn down
+ 00000455  75 0B			jne contLeftDown2
+ 00000457  8A 35 000000E8 R		mov dh,bikeDH
+ 0000045D  E9 00000712			jmp quickLeftDown
+ 00000462			contLeftDown2:
+ 00000462			contTurnLeft2:
+ 00000462  8A 35 000000E8 R		mov dh,bikeDH
+ 00000468  8A 15 000000E7 R		mov dl,bikeDL
+ 0000046E  EB 1D			jmp afterTurnLeft
+					
+ 00000470			moveLeft: ;moves the bike left one space
+ 00000470  8A 15 000000E7 R		mov dl,bikeDL
+ 00000476  8A 35 000000E8 R		mov dh,bikeDH
+ 0000047C  E8 00000000 E		call gotoxy
+ 00000481  0F B6 05			movzx eax,trailHorz ;draw the trail where the bike was
+	   000000D9 R
+ 00000488  E8 00000000 E		call writeChar
+					
+ 0000048D			afterTurnLeft:
+ 0000048D  FE 0D 000000E7 R		dec bikeDL
+ 00000493  8A 15 000000E7 R		mov dl,bikeDL
+ 00000499  E8 00000000 E		call gotoxy
+ 0000049E  0F B6 05			movzx eax,bikeHorz ;draw bike at new location
+	   000000D3 R
+ 000004A5  E8 00000000 E		call writeChar
+ 000004AA  E8 00000000 E		call gotoxy
+ 000004AF  E8 FFFFFC68		call changeBoard
+ 000004B4  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 000004BE  0F 8D 00000834	jge done
+ 000004C4  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 000004CB  0F 84 00000827	je done
+					
+ 000004D1  80 FA 01			cmp dl,1 ;check if crash left wall
+ 000004D4  75 1D			jne noLeftCrash
+ 000004D6  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 000004DD  E8 00000000 E		call writeChar
+ 000004E2  FE CA			dec dl
+ 000004E4  E8 00000000 E		call gotoxy
+ 000004E9  E8 00000000 E		call writeChar
+ 000004EE  E9 00000805		jmp done
+					
+ 000004F3			noLeftCrash:	
+ 000004F3  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 000004FA  E8 00000000 E		call delay
+ 000004FF  E8 00000000 E		call readKey
+ 00000504  74 28			jz noKeyLeft
+					
+ 00000506  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000509  75 05			jne aroundLeftEscape
+ 0000050B  E9 000007E8		jmp done
+ 00000510			aroundLeftEscape:
+					
+ 00000510  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 00000513  75 05			jne aroundLeftPause
+ 00000515  E8 00000877			call pauseGame
+ 0000051A			aroundLeftPause:
+					
+ 0000051A  80 FC 48			cmp ah,048h ;up arrow pressed, turn up
+ 0000051D  75 05			jne aroundLeftUp
+ 0000051F  E9 00000393			jmp turnLeftUp
+ 00000524			aroundLeftUp:
+					
+ 00000524  80 FC 50			cmp ah,050h ;down arrow pressed, turn down
+ 00000527  75 05			jne aroundLeftDown
+ 00000529  E9 00000629			jmp turnLeftDown
+ 0000052E			aroundLeftDown:
+ 0000052E			noKeyLeft:
+ 0000052E  E9 FFFFFF3D			jmp moveLeft
+
+ 00000533			turnUpRight:
+ 00000533  8A 15 000000E7 R		mov dl,bikeDL
+ 00000539  8A 35 000000E8 R		mov dh,bikeDH
+ 0000053F  E8 00000000 E		call gotoxy
+ 00000544  0F B6 05			movzx eax,trailVert ;draw the trail where the bike was
+	   000000D8 R
+ 0000054B  E8 00000000 E		call writeChar
+ 00000550			quickUpRight:
+ 00000550  FE 0D 000000E8 R		dec bikeDH
+ 00000556  8A 35 000000E8 R		mov dh,bikeDH
+ 0000055C  80 FE 00			cmp dh,0 ;check if crash top wall
+ 0000055F  75 16			jne noUpRightCrash
+ 00000561  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000568  E8 00000000 E		call gotoxy
+ 0000056D  E8 00000000 E		call writeChar
+ 00000572  E9 00000781		jmp done
+					
+ 00000577			noUpRightCrash:
+ 00000577  E8 00000000 E		call gotoxy
+ 0000057C  0F B6 05			movzx eax,bikeRightDown ;draw the down-left turn bike
+	   000000D7 R
+ 00000583  E8 00000000 E		call writeChar
+ 00000588  E8 FFFFFB8F		call changeBoard
+ 0000058D  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 00000597  0F 8D 0000075B	jge done
+ 0000059D  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 000005A4  0F 84 0000074E	je done
+					
+ 000005AA  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 000005B1  E8 00000000 E		call delay
+					
+ 000005B6  E8 00000000 E		call gotoxy
+ 000005BB  0F B6 05			movzx eax,trailRightDown ;draw the down-left trail
+	   000000DD R
+ 000005C2  E8 00000000 E		call writeChar
+					
+ 000005C7  E8 00000000 E		call readKey
+ 000005CC  74 40			jz contTurnRight1
+					
+ 000005CE  8A 35 000000E8 R		mov dh,bikeDH
+ 000005D4  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 000005DA  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 000005DD  75 05			jne contRightEscape1
+ 000005DF  E9 00000714		jmp done
+ 000005E4			contRightEscape1:
+					
+ 000005E4  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 000005E7  75 05			jne contRightPause1
+ 000005E9  E8 000007A3			call pauseGame
+ 000005EE			contRightPause1:
+					
+ 000005EE  80 FC 48			cmp ah,048h ;up arrow pressed, turn up
+ 000005F1  75 0B			jne contRightUp1
+ 000005F3  8A 35 000000E8 R		mov dh,bikeDH
+ 000005F9  E9 000001E5			jmp quickRightUp
+ 000005FE			contRightUp1:
+					
+ 000005FE  80 FC 50			cmp ah,050h ;down arrow pressed, turn down
+ 00000601  75 0B			jne contRightDown1
+ 00000603  8A 35 000000E8 R		mov dh,bikeDH
+ 00000609  E9 00000475			jmp quickRightDown
+ 0000060E			contRightDown1:
+ 0000060E			contTurnRight1:
+ 0000060E  8A 35 000000E8 R		mov dh,bikeDH
+ 00000614  8A 15 000000E7 R		mov dl,bikeDL
+
+ 0000061A  E9 00000106			jmp afterTurnRight
+					
+ 0000061F			turnDownRight:
+ 0000061F  8A 15 000000E7 R		mov dl,bikeDL
+ 00000625  8A 35 000000E8 R		mov dh,bikeDH
+ 0000062B  E8 00000000 E		call gotoxy
+ 00000630  0F B6 05			movzx eax,trailVert ;draw the trail where the bike was
+	   000000D8 R
+ 00000637  E8 00000000 E		call writeChar
+ 0000063C			quickDownRight:
+ 0000063C  FE 05 000000E8 R		inc bikeDH
+ 00000642  8A 35 000000E8 R		mov dh,bikeDH
+ 00000648  80 FE 3D			cmp dh,61 ;check if crash bottom wall
+ 0000064B  75 16			jne noDownRightCrash
+ 0000064D  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000654  E8 00000000 E		call gotoxy
+ 00000659  E8 00000000 E		call writeChar
+ 0000065E  E9 00000695		jmp done
+					
+ 00000663			noDownRightCrash:
+ 00000663  E8 00000000 E		call gotoxy
+ 00000668  0F B6 05			movzx eax,bikeRightUp ;draw the down-left turn bike
+	   000000D5 R
+ 0000066F  E8 00000000 E		call writeChar
+ 00000674  E8 FFFFFAA3		call changeBoard
+ 00000679  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 00000683  0F 8D 0000066F	jge done
+ 00000689  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 00000690  0F 84 00000662	je done
+					
+ 00000696  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 0000069D  E8 00000000 E		call delay
+					
+ 000006A2  E8 00000000 E		call gotoxy
+ 000006A7  0F B6 05			movzx eax,trailRightUp ;draw the down-left trail
+	   000000DC R
+ 000006AE  E8 00000000 E		call writeChar
+					
+ 000006B3  E8 00000000 E		call readKey
+ 000006B8  74 40			jz contTurnRight2
+					
+ 000006BA  8A 35 000000E8 R		mov dh,bikeDH
+ 000006C0  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 000006C6  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 000006C9  75 05			jne contRightEscape2
+ 000006CB  E9 00000628		jmp done
+ 000006D0			contRightEscape2:
+					
+ 000006D0  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 000006D3  75 05			jne contRightPause2
+ 000006D5  E8 000006B7			call pauseGame
+ 000006DA			contRightPause2:
+					
+ 000006DA  80 FC 48			cmp ah,048h ;up arrow pressed, turn up
+ 000006DD  75 0B			jne contRightUp2
+ 000006DF  8A 35 000000E8 R		mov dh,bikeDH
+ 000006E5  E9 000000F9			jmp quickRightUp
+ 000006EA			contRightUp2:
+					
+ 000006EA  80 FC 50			cmp ah,050h ;down arrow pressed, turn down
+ 000006ED  75 0B			jne contRightDown2
+ 000006EF  8A 35 000000E8 R		mov dh,bikeDH
+ 000006F5  E9 00000389			jmp quickRightDown
+ 000006FA			contRightDown2:
+ 000006FA			contTurnRight2:
+ 000006FA  8A 35 000000E8 R		mov dh,bikeDH
+ 00000700  8A 15 000000E7 R		mov dl,bikeDL
+
+ 00000706  EB 1D			jmp afterTurnRight
+					
+ 00000708			moveRight: ;moves the bike right one space
+ 00000708  8A 15 000000E7 R		mov dl,bikeDL
+ 0000070E  8A 35 000000E8 R		mov dh,bikeDH
+ 00000714  E8 00000000 E		call gotoxy
+ 00000719  0F B6 05			movzx eax,trailHorz ;draw the trail where the bike was
+	   000000D9 R
+ 00000720  E8 00000000 E		call writeChar
+					
+ 00000725			afterTurnRight:
+ 00000725  FE 05 000000E7 R		inc bikeDL
+ 0000072B  8A 15 000000E7 R		mov dl,bikeDL
+ 00000731  E8 00000000 E		call gotoxy
+ 00000736  0F B6 05			movzx eax,bikeHorz ;draw bike at new location
+	   000000D3 R
+ 0000073D  E8 00000000 E		call writeChar
+ 00000742  E8 00000000 E		call gotoxy
+ 00000747  E8 FFFFF9D0		call changeBoard
+ 0000074C  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 00000756  0F 8D 0000059C	jge done
+ 0000075C  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 00000763  0F 84 0000058F	je done
+					
+ 00000769  80 FA 94			cmp dl,148 ;check if crash right wall
+ 0000076C  75 1B			jne noRightCrash
+ 0000076E  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000775  E8 00000000 E		call gotoxy
+ 0000077A  E8 00000000 E		call writeChar
+ 0000077F  E8 00000000 E		call writeChar
+ 00000784  E9 0000056F		jmp done
+					
+ 00000789			noRightCrash:
+ 00000789  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000790  E8 00000000 E		call delay
+ 00000795  E8 00000000 E		call readKey
+ 0000079A  74 25			jz noKeyRight
+					
+ 0000079C  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 0000079F  75 05			jne aroundRightEscape
+ 000007A1  E9 00000552		jmp done
+ 000007A6			aroundRightEscape:
+					
+ 000007A6  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 000007A9  75 05			jne aroundRightPause
+ 000007AB  E8 000005E1			call pauseGame
+ 000007B0			aroundRightPause:
+					
+ 000007B0  80 FC 48			cmp ah,048h ;up arrow pressed, turn up
+ 000007B3  75 02			jne aroundRightUp
+ 000007B5  EB 0F			jmp turnRightUp
+ 000007B7			aroundRightUp:
+					
+ 000007B7  80 FC 50			cmp ah,050h ;down arrow pressed, turn down
+ 000007BA  75 05			jne aroundRightDown
+ 000007BC  E9 000002A5			jmp turnRightDown
+ 000007C1			aroundRightDown:
+ 000007C1			noKeyRight:
+ 000007C1  E9 FFFFFF42			jmp moveRight
+					
+ 000007C6			turnRightUp:
+ 000007C6  8A 15 000000E7 R		mov dl,bikeDL
+ 000007CC  8A 35 000000E8 R		mov dh,bikeDH
+ 000007D2  E8 00000000 E		call gotoxy
+ 000007D7  0F B6 05			movzx eax,trailHorz ;draw the trail where the bike was
+	   000000D9 R
+ 000007DE  E8 00000000 E		call writeChar
+ 000007E3			quickRightUp:
+ 000007E3  FE 05 000000E7 R		inc bikeDL
+ 000007E9  8A 15 000000E7 R		mov dl,bikeDL
+ 000007EF  80 FA 94			cmp dl,148 ;check if crash right wall
+ 000007F2  75 1B			jne noRightUpCrash
+ 000007F4  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 000007FB  E8 00000000 E		call gotoxy
+ 00000800  E8 00000000 E		call writeChar
+ 00000805  E8 00000000 E		call writeChar
+ 0000080A  E9 000004E9		jmp done
+					
+ 0000080F			noRightUpCrash:
+ 0000080F  E8 00000000 E		call gotoxy
+ 00000814  0F B6 05			movzx eax,bikeLeftUp ;draw the right-up turn bike
+	   000000D6 R
+ 0000081B  E8 00000000 E		call writeChar
+ 00000820  E8 FFFFF8F7		call changeBoard
+ 00000825  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 0000082F  0F 8D 000004C3	jge done
+ 00000835  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 0000083C  0F 84 000004B6	je done
+					
+ 00000842  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000849  E8 00000000 E		call delay
+					
+ 0000084E  E8 00000000 E		call gotoxy
+ 00000853  0F B6 05			movzx eax,trailLeftUp ;draw the right-up trail
+	   000000DB R
+ 0000085A  E8 00000000 E		call writeChar
+					
+ 0000085F  E8 00000000 E		call readKey
+ 00000864  74 40			jz contTurnUp1
+					
+ 00000866  8A 35 000000E8 R		mov dh,bikeDH
+ 0000086C  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 00000872  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000875  75 05			jne contUpEscape1
+ 00000877  E9 0000047C		jmp done
+ 0000087C			contUpEscape1:
+					
+ 0000087C  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 0000087F  75 05			jne contUpPause1
+ 00000881  E8 0000050B			call pauseGame
+ 00000886			contUpPause1:
+
+ 00000886  80 FC 4D			cmp ah,04Dh ;right arrow pressed, turn right
+ 00000889  75 0B			jne contUpRight1
+ 0000088B  8A 15 000000E7 R		mov dl,bikeDL
+ 00000891  E9 FFFFFCBA			jmp quickUpRight
+ 00000896			contUpRight1:
+					
+ 00000896  80 FC 4B			cmp ah,04Bh ;left arrow pressed, turn left
+ 00000899  75 0B			jne contUpLeft1
+ 0000089B  8A 15 000000E7 R		mov dl,bikeDL
+ 000008A1  E9 FFFFFA12			jmp quickUpLeft
+ 000008A6			contUpLeft1:
+ 000008A6			contTurnUp1:
+ 000008A6  8A 35 000000E8 R		mov dh,bikeDH
+ 000008AC  8A 15 000000E7 R		mov dl,bikeDL
+
+ 000008B2  E9 00000112			jmp afterTurnUp
+					
+ 000008B7			turnLeftUp:
+ 000008B7  8A 15 000000E7 R		mov dl,bikeDL
+ 000008BD  8A 35 000000E8 R		mov dh,bikeDH
+ 000008C3  E8 00000000 E		call gotoxy
+ 000008C8  0F B6 05			movzx eax,trailHorz ;draw the trail where the bike was
+	   000000D9 R
+ 000008CF  E8 00000000 E		call writeChar
+ 000008D4			quickLeftUp:
+ 000008D4  FE 0D 000000E7 R		dec bikeDL
+ 000008DA  8A 15 000000E7 R		mov dl,bikeDL
+ 000008E0  80 FA 01			cmp dl,1 ;check if crash left wall
+ 000008E3  75 22			jne noLeftUpCrash
+ 000008E5  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 000008EC  E8 00000000 E		call gotoxy
+ 000008F1  E8 00000000 E		call writeChar
+ 000008F6  FE CA			dec dl
+ 000008F8  E8 00000000 E		call gotoxy
+ 000008FD  E8 00000000 E		call writeChar
+ 00000902  E9 000003F1		jmp done
+					
+ 00000907			noLeftUpCrash:
+ 00000907  E8 00000000 E		call gotoxy
+ 0000090C  0F B6 05			movzx eax,bikeRightUp ;draw the left-up turn bike
+	   000000D5 R
+ 00000913  E8 00000000 E		call writeChar
+ 00000918  E8 FFFFF7FF		call changeBoard
+ 0000091D  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 00000927  0F 8D 000003CB	jge done
+ 0000092D  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 00000934  0F 84 000003BE	je done
+					
+ 0000093A  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000941  E8 00000000 E		call delay
+					
+ 00000946  E8 00000000 E		call gotoxy
+ 0000094B  0F B6 05			movzx eax,trailRightUp ;draw the left-up trail
+	   000000DC R
+ 00000952  E8 00000000 E		call writeChar
+					
+ 00000957  E8 00000000 E		call readKey
+ 0000095C  74 40			jz contTurnUp2
+					
+ 0000095E  8A 35 000000E8 R		mov dh,bikeDH
+ 00000964  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 0000096A  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 0000096D  75 05			jne contUpEscape2
+ 0000096F  E9 00000384		jmp done
+ 00000974			contUpEscape2:
+					
+ 00000974  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 00000977  75 05			jne contUpPause2
+ 00000979  E8 00000413			call pauseGame
+ 0000097E			contUpPause2:
+
+ 0000097E  80 FC 4D			cmp ah,04Dh ;right arrow pressed, turn right
+ 00000981  75 0B			jne contUpRight2
+ 00000983  8A 15 000000E7 R		mov dl,bikeDL
+ 00000989  E9 FFFFFBC2			jmp quickUpRight
+ 0000098E			contUpRight2:
+					
+ 0000098E  80 FC 4B			cmp ah,04Bh ;left arrow pressed, turn left
+ 00000991  75 0B			jne contUpLeft2
+ 00000993  8A 15 000000E7 R		mov dl,bikeDL
+ 00000999  E9 FFFFF91A			jmp quickUpLeft
+ 0000099E			contUpLeft2:
+ 0000099E			contTurnUp2:
+ 0000099E  8A 35 000000E8 R		mov dh,bikeDH
+ 000009A4  8A 15 000000E7 R		mov dl,bikeDL
+
+ 000009AA  EB 1D			jmp afterTurnUp
+					
+ 000009AC			moveUp: ;moves the bike up one space
+ 000009AC  8A 15 000000E7 R		mov dl,bikeDL
+ 000009B2  8A 35 000000E8 R		mov dh,bikeDH
+ 000009B8  E8 00000000 E		call gotoxy
+ 000009BD  0F B6 05			movzx eax,trailVert ;draw the trail where the bike was
+	   000000D8 R
+ 000009C4  E8 00000000 E		call writeChar
+					
+ 000009C9			afterTurnUp:
+ 000009C9  FE 0D 000000E8 R		dec bikeDH
+ 000009CF  8A 35 000000E8 R		mov dh,bikeDH
+ 000009D5  E8 00000000 E		call gotoxy
+ 000009DA  0F B6 05			movzx eax,bikeVert ;draw bike at new location
+	   000000D2 R
+ 000009E1  E8 00000000 E		call writeChar
+ 000009E6  E8 00000000 E		call gotoxy
+ 000009EB  E8 FFFFF72C		call changeBoard
+ 000009F0  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 000009FA  0F 8D 000002F8	jge done
+ 00000A00  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 00000A07  0F 84 000002EB	je done
+					
+ 00000A0D  80 FE 00			cmp dh,0 ;check if crash top wall
+ 00000A10  75 11			jne noUpCrash
+ 00000A12  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000A19  E8 00000000 E		call writeChar
+ 00000A1E  E9 000002D5		jmp done
+					
+ 00000A23			noUpCrash:
+ 00000A23  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000A2A  83 C0 0A			add eax,10
+ 00000A2D  E8 00000000 E		call delay
+ 00000A32  E8 00000000 E		call readKey
+ 00000A37  74 28			jz noKeyUp
+					
+ 00000A39  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000A3C  75 05			jne aroundUpEscape
+ 00000A3E  E9 000002B5		jmp done
+ 00000A43			aroundUpEscape:
+					
+ 00000A43  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 00000A46  75 05			jne aroundUpPause
+ 00000A48  E8 00000344			call pauseGame
+ 00000A4D			aroundUpPause:
+					
+ 00000A4D  80 FC 4D			cmp ah,04Dh ;right arrow pressed, turn right
+ 00000A50  75 05			jne aroundUpRight
+ 00000A52  E9 FFFFFADC			jmp turnUpRight
+ 00000A57			aroundUpRight:
+					
+ 00000A57  80 FC 4B			cmp ah,04Bh ;left arrow pressed, turn left
+ 00000A5A  75 05			jne aroundUpLeft
+ 00000A5C  E9 FFFFF83A			jmp turnUpLeft
+ 00000A61			aroundUpLeft:
+ 00000A61			noKeyUp:
+ 00000A61  E9 FFFFFF46			jmp moveUp
+					
+ 00000A66			turnRightDown:
+ 00000A66  8A 15 000000E7 R		mov dl,bikeDL
+ 00000A6C  8A 35 000000E8 R		mov dh,bikeDH
+ 00000A72  E8 00000000 E		call gotoxy
+ 00000A77  0F B6 05			movzx eax,trailHorz ;draw the trail where the bike was
+	   000000D9 R
+ 00000A7E  E8 00000000 E		call writeChar
+ 00000A83			quickRightDown:
+ 00000A83  FE 05 000000E7 R		inc bikeDL
+ 00000A89  8A 15 000000E7 R		mov dl,bikeDL
+ 00000A8F  80 FA 94			cmp dl,148 ;check if crash right wall
+ 00000A92  75 1B			jne noRightDownCrash
+ 00000A94  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000A9B  E8 00000000 E		call gotoxy
+ 00000AA0  E8 00000000 E		call writeChar
+ 00000AA5  E8 00000000 E		call writeChar
+ 00000AAA  E9 00000249		jmp done
+					
+ 00000AAF			noRightDownCrash:
+ 00000AAF  E8 00000000 E		call gotoxy
+ 00000AB4  0F B6 05			movzx eax,bikeLeftDown ;draw the right-down turn bike
+	   000000D4 R
+ 00000ABB  E8 00000000 E		call writeChar
+ 00000AC0  E8 FFFFF657		call changeBoard
+ 00000AC5  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 00000ACF  0F 8D 00000223	jge done
+ 00000AD5  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 00000ADC  0F 84 00000216	je done
+					
+ 00000AE2  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000AE9  E8 00000000 E		call delay
+					
+ 00000AEE  E8 00000000 E		call gotoxy
+ 00000AF3  0F B6 05			movzx eax,trailLeftDown ;draw the right-down trail
+	   000000DA R
+ 00000AFA  E8 00000000 E		call writeChar
+					
+ 00000AFF  E8 00000000 E		call readKey
+ 00000B04  74 40			jz contTurnDown1
+					
+ 00000B06  8A 35 000000E8 R		mov dh,bikeDH
+ 00000B0C  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 00000B12  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000B15  75 05			jne contDownEscape1
+ 00000B17  E9 000001DC		jmp done
+ 00000B1C			contDownEscape1:
+					
+ 00000B1C  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 00000B1F  75 05			jne contDownPause1
+ 00000B21  E8 0000026B			call pauseGame
+ 00000B26			contDownPause1:
+
+ 00000B26  80 FC 4D			cmp ah,04Dh ;right arrow pressed, turn right
+ 00000B29  75 0B			jne contDownRight1
+ 00000B2B  8A 15 000000E7 R		mov dl,bikeDL
+ 00000B31  E9 FFFFFB06			jmp quickDownRight
+ 00000B36			contDownRight1:
+					
+ 00000B36  80 FC 4B			cmp ah,04Bh ;left arrow pressed, turn left
+ 00000B39  75 0B			jne contDownLeft1
+ 00000B3B  8A 15 000000E7 R		mov dl,bikeDL
+ 00000B41  E9 FFFFF85E			jmp quickDownLeft
+ 00000B46			contDownLeft1:
+ 00000B46			contTurnDown1:
+ 00000B46  8A 35 000000E8 R		mov dh,bikeDH
+ 00000B4C  8A 15 000000E7 R		mov dl,bikeDL
+
+ 00000B52  E9 00000112			jmp afterTurnDown
+					
+ 00000B57			turnLeftDown:
+ 00000B57  8A 15 000000E7 R		mov dl,bikeDL
+ 00000B5D  8A 35 000000E8 R		mov dh,bikeDH
+ 00000B63  E8 00000000 E		call gotoxy
+ 00000B68  0F B6 05			movzx eax,trailHorz ;draw the trail where the bike was
+	   000000D9 R
+ 00000B6F  E8 00000000 E		call writeChar
+ 00000B74			quickLeftDown:
+ 00000B74  FE 0D 000000E7 R		dec bikeDL
+ 00000B7A  8A 15 000000E7 R		mov dl,bikeDL
+ 00000B80  80 FA 01			cmp dl,1 ;check if crash left wall
+ 00000B83  75 22			jne noLeftDownCrash
+ 00000B85  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000B8C  E8 00000000 E		call gotoxy
+ 00000B91  E8 00000000 E		call writeChar
+ 00000B96  FE CA			dec dl
+ 00000B98  E8 00000000 E		call gotoxy
+ 00000B9D  E8 00000000 E		call writeChar
+ 00000BA2  E9 00000151		jmp done
+					
+ 00000BA7			noLeftDownCrash:
+ 00000BA7  E8 00000000 E		call gotoxy
+ 00000BAC  0F B6 05			movzx eax,bikeRightDown ;draw the right-down turn bike
+	   000000D7 R
+ 00000BB3  E8 00000000 E		call writeChar
+ 00000BB8  E8 FFFFF55F		call changeBoard
+ 00000BBD  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 00000BC7  0F 8D 0000012B	jge done
+ 00000BCD  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 00000BD4  0F 84 0000011E	je done
+					
+ 00000BDA  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000BE1  E8 00000000 E		call delay
+					
+ 00000BE6  E8 00000000 E		call gotoxy
+ 00000BEB  0F B6 05			movzx eax,trailRightDown ;draw the right-down trail
+	   000000DD R
+ 00000BF2  E8 00000000 E		call writeChar
+					
+ 00000BF7  E8 00000000 E		call readKey
+ 00000BFC  74 40			jz contTurnDown2
+					
+ 00000BFE  8A 35 000000E8 R		mov dh,bikeDH
+ 00000C04  8A 15 000000E7 R		mov dl,bikeDL
+					
+ 00000C0A  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000C0D  75 05			jne contDownEscape2
+ 00000C0F  E9 000000E4		jmp done
+ 00000C14			contDownEscape2:
+					
+ 00000C14  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 00000C17  75 05			jne contDownPause2
+ 00000C19  E8 00000173			call pauseGame
+ 00000C1E			contDownPause2:
+
+ 00000C1E  80 FC 4D			cmp ah,04Dh ;right arrow pressed, turn right
+ 00000C21  75 0B			jne contDownRight2
+ 00000C23  8A 15 000000E7 R		mov dl,bikeDL
+ 00000C29  E9 FFFFFA0E			jmp quickDownRight
+ 00000C2E			contDownRight2:
+					
+ 00000C2E  80 FC 4B			cmp ah,04Bh ;left arrow pressed, turn left
+ 00000C31  75 0B			jne contDownLeft2
+ 00000C33  8A 15 000000E7 R		mov dl,bikeDL
+ 00000C39  E9 FFFFF766			jmp quickDownLeft
+ 00000C3E			contDownLeft2:
+ 00000C3E			contTurnDown2:
+ 00000C3E  8A 35 000000E8 R		mov dh,bikeDH
+ 00000C44  8A 15 000000E7 R		mov dl,bikeDL
+
+ 00000C4A  EB 1D			jmp afterTurnDown
+					
+ 00000C4C			moveDown: ;moves the bike down one space
+ 00000C4C  8A 15 000000E7 R		mov dl,bikeDL
+ 00000C52  8A 35 000000E8 R		mov dh,bikeDH
+ 00000C58  E8 00000000 E		call gotoxy
+ 00000C5D  0F B6 05			movzx eax,trailVert ;draw the trail where the bike was
+	   000000D8 R
+ 00000C64  E8 00000000 E		call writeChar
+					
+ 00000C69			afterTurnDown:
+ 00000C69  FE 05 000000E8 R		inc bikeDH
+ 00000C6F  8A 35 000000E8 R		mov dh,bikeDH
+ 00000C75  E8 00000000 E		call gotoxy
+ 00000C7A  0F B6 05			movzx eax,bikeVert ;draw bike at new location
+	   000000D2 R
+ 00000C81  E8 00000000 E		call writeChar
+ 00000C86  E8 00000000 E		call gotoxy
+ 00000C8B  E8 FFFFF48C		call changeBoard
+ 00000C90  81 3D 000000F3 R	cmp score,lengthof board
+	   00002238
+ 00000C9A  7D 5C		jge done
+ 00000C9C  80 3D 000000EC R	cmp crashEnd,1
+	   01
+ 00000CA3  74 53		je done
+					
+ 00000CA5  80 FE 3D			cmp dh,61 ;check if crash bottom wall
+ 00000CA8  75 0E			jne noDownCrash
+ 00000CAA  0F B6 05			movzx eax,crash
+	   000000E1 R
+ 00000CB1  E8 00000000 E		call writeChar
+ 00000CB6  EB 40		jmp done
+					
+ 00000CB8			noDownCrash:
+ 00000CB8  0F B6 05			movzx eax,delayBike
+	   000000E9 R
+ 00000CBF  83 C0 0A			add eax,10
+ 00000CC2  E8 00000000 E		call delay
+ 00000CC7  E8 00000000 E		call readKey
+ 00000CCC  74 25			jz noKeyDown
+					
+ 00000CCE  80 FC 01			cmp ah,001h ;escape pressed, quit game
+ 00000CD1  75 02			jne aroundDownEscape
+ 00000CD3  EB 23		jmp done
+ 00000CD5			aroundDownEscape:
+					
+ 00000CD5  80 FC 39			cmp ah,039h ;spacebar pressed, pause game
+ 00000CD8  75 05			jne aroundDownPause
+ 00000CDA  E8 000000B2			call pauseGame
+ 00000CDF			aroundDownPause:
+					
+ 00000CDF  80 FC 4D			cmp ah,04Dh ;right arrow pressed, turn right
+ 00000CE2  75 05			jne aroundDownRight
+ 00000CE4  E9 FFFFF936			jmp turnDownRight
+ 00000CE9			aroundDownRight:
+					
+ 00000CE9  80 FC 4B			cmp ah,04Bh ;left arrow pressed, turn left
+ 00000CEC  75 05			jne aroundDownLeft
+ 00000CEE  E9 FFFFF694			jmp turnDownLeft
+ 00000CF3			aroundDownLeft:
+ 00000CF3			noKeyDown:
+ 00000CF3  E9 FFFFFF54		jmp moveDown
+
+ 00000CF8			done::
+ 00000CF8  C3			RET
+ 00000CF9			lightBike ENDP
+
+
+ 00000CF9			startGame PROC
+ 00000CF9  B8 0000007D			mov eax, lightmagenta+(lightgray*16)
+ 00000CFE  E8 00000000 E		call SetTextColor
+					
+ 00000D03  B2 3F			mov dl,63 ;push space to start
+ 00000D05  B6 1F			mov dh,31
+ 00000D07  E8 00000000 E		call gotoxy
+ 00000D0C  BA 00000065 R		mov edx, OFFSET pushSpace
+ 00000D11  E8 00000000 E		call writeString
+					
+ 00000D16			hitSpace: ;start the game
+ 00000D16  0F B6 05			movzx eax,delayReadKey
+	   000000EB R
+ 00000D1D  E8 00000000 E		call delay
+ 00000D22  E8 00000000 E		call readKey
+ 00000D27  80 FC 39			cmp ah,39h
+ 00000D2A  75 EA		jne hitSpace
+ 00000D2C  B2 3F			mov dl,63
+ 00000D2E  B6 1F			mov dh,31
+ 00000D30  E8 00000000 E		call gotoxy
+ 00000D35  0F B6 05			movzx eax,space
+	   000000E2 R
+ 00000D3C  B9 00000018			mov ecx,24
+ 00000D41			erase:
+ 00000D41  E8 00000000 E		call writeChar
+ 00000D46  E2 F9		loop erase
+				;randomize starting spot here
+ 00000D48  B8 0000000E			mov eax,14 ;random number from 0 to 13
+ 00000D4D  E8 00000000 E		call randomRange
+ 00000D52  40				inc eax    ;random number from 1 to 14
+ 00000D53  83 C0 17			add eax,23
+ 00000D56  A2 000000E8 R		mov bikeDH,al ;random starting row
+					
+ 00000D5B  B8 00000024			mov eax,36 ;random number from 0 to 35
+ 00000D60  E8 00000000 E		call randomRange
+ 00000D65  40				inc eax    ;random number from 1 to 36
+ 00000D66  83 C0 37			add eax,55
+ 00000D69  A2 000000E7 R		mov bikeDL,al
+
+ 00000D6E  0F B6 05			movzx eax,bikeHorz ;draw the starting bike location after spacebar is hit (currently moves left)
+	   000000D3 R
+ 00000D75  8A 15 000000E7 R		mov dl,bikeDL
+ 00000D7B  8A 35 000000E8 R		mov dh,bikeDH
+ 00000D81  E8 00000000 E		call gotoxy
+ 00000D86  E8 00000000 E		call writeChar
+ 00000D8B  E8 00000000 E		call gotoxy
+
+ 00000D90  C3			RET
+ 00000D91			startGame ENDP
+
+
+ 00000D91			pauseGame PROC ;what it says
+ 00000D91			keepPaused:
+ 00000D91  0F B6 05			movzx eax, delayReadKey
+	   000000EB R
+ 00000D98  E8 00000000 E		call delay
+ 00000D9D  E8 00000000 E		call Readkey
+
+ 00000DA2  80 FC 39			cmp ah, 39h
+ 00000DA5  75 EA		jne keepPaused ;if spacebar is hit, unpause. If not, keep paused
+
+ 00000DA7  C3			RET
+ 00000DA8			pauseGame ENDP
+
+
+ 00000DA8			controls PROC
+ 00000DA8  B8 0000000F			mov eax, white+(black*16)
+ 00000DAD  E8 00000000 E		call SetTextColor
+					
+ 00000DB2  B2 3C			mov dl,60
+ 00000DB4  B6 3F			mov dh,63
+ 00000DB6  E8 00000000 E		call gotoxy
+ 00000DBB  BA 00000005 R		mov edx,OFFSET controlMenu
+ 00000DC0  E8 00000000 E		call writeString
+					
+ 00000DC5  B2 3C			mov dl,60
+ 00000DC7  B6 40			mov dh,64
+ 00000DC9  E8 00000000 E		call gotoxy
+ 00000DCE  BA 00000018 R		mov edx,OFFSET spc
+ 00000DD3  E8 00000000 E		call writeString
+					
+					
+ 00000DD8  B2 3C			mov dl,60
+ 00000DDA  B6 41			mov dh,65
+ 00000DDC  E8 00000000 E		call gotoxy
+ 00000DE1  BA 00000030 R		mov edx,OFFSET escp
+ 00000DE6  E8 00000000 E		call writeString
+					
+					
+ 00000DEB  B2 3C			mov dl,60
+ 00000DED  B6 42			mov dh,66
+ 00000DEF  E8 00000000 E		call gotoxy
+ 00000DF4  BA 00000046 R		mov edx,OFFSET arro
+ 00000DF9  E8 00000000 E		call writeString 
+					
+ 00000DFE  B2 0A			mov dl,10
+ 00000E00  B6 40			mov dh,64
+ 00000E02  E8 00000000 E		call gotoxy
+ 00000E07  BA 000000C0 R		mov edx,OFFSET levelStr
+ 00000E0C  E8 00000000 E		call writeString
+					
+ 00000E11  B2 0A			mov dl,10
+ 00000E13  B6 41			mov dh,65
+ 00000E15  E8 00000000 E		call gotoxy
+ 00000E1A  BA 000000C9 R		mov edx,OFFSET totalStr
+ 00000E1F  E8 00000000 E		call writeString
+					
+ 00000E24  B2 0A			mov dl,10
+ 00000E26  B6 42			mov dh,66
+ 00000E28  E8 00000000 E		call gotoxy
+ 00000E2D  BA 000000B7 R		mov edx,OFFSET scoreStr
+ 00000E32  E8 00000000 E		call writeString
+					
+ 00000E37  C3			RET
+ 00000E38			controls ENDP
+
+
+ 00000E38			showTRON PROC
+ 00000E38  B2 48			mov dl,72
+ 00000E3A  B6 1F			mov dh,31
+ 00000E3C  E8 00000000 E		call gotoxy
+ 00000E41  BA 00000000 R		mov edx,OFFSET tronTitle
+ 00000E46  B8 00000003			mov eax, cyan+(black*16)
+ 00000E4B  E8 00000000 E		call SetTextColor
+ 00000E50  E8 00000000 E		call writeString
+					
+ 00000E55			hitSpace:
+ 00000E55  0F B6 05			movzx eax,delayReadKey
+	   000000EB R
+ 00000E5C  E8 00000000 E		call delay
+ 00000E61  E8 00000000 E		call readKey
+ 00000E66  80 FC 39			cmp ah,39h
+ 00000E69  75 EA		jne hitSpace
+
+ 00000E6B  C3			RET
+ 00000E6C			showTRON ENDP
+
+
+ 00000E6C			drawBorder PROC
+ 00000E6C  B8 00000073			mov eax, cyan+(lightgray*16)
+ 00000E71  E8 00000000 E		call SetTextColor
+					
+ 00000E76  B2 00			mov dl,0 ;draws the gray background from top to bottom
+ 00000E78  B6 00			mov dh,0
+ 00000E7A  B9 0000003E			mov ecx,62
+ 00000E7F  0F B6 05			movzx eax,space
+	   000000E2 R
+ 00000E86			drawBackground:
+ 00000E86  51				push ecx
+ 00000E87  B9 00000096			mov ecx,150
+ 00000E8C  E8 00000000 E		call gotoxy
+ 00000E91				line:
+ 00000E91  0F B6 05				movzx eax,space
+	   000000E2 R
+ 00000E98  E8 00000000 E			call writeChar
+ 00000E9D  E2 F2			loop line
+ 00000E9F  0F B6 05				movzx eax,delayBackground
+	   000000EA R
+ 00000EA6  83 C0 05				add eax,5
+ 00000EA9  E8 00000000 E			call delay
+ 00000EAE  B2 00			mov dl,0
+ 00000EB0  FE C6			inc dh
+ 00000EB2  59				pop ecx
+ 00000EB3  E2 D1		loop drawBackground
+ 00000EB5  0F B6 05			movzx eax,wallTop ;top wall
+	   000000DE R
+ 00000EBC  B9 0000004A			mov ecx,74
+
+ 00000EC1			drawTopWall:
+ 00000EC1  8A 15 000000E3 R		mov dl,leftDL
+ 00000EC7  8A 35 000000E5 R		mov dh,leftDH
+ 00000ECD  E8 00000000 E		call gotoxy
+ 00000ED2  E8 00000000 E		call writeChar
+					
+ 00000ED7  8A 15 000000E4 R		mov dl,rightDL
+ 00000EDD  8A 35 000000E6 R		mov dh,rightDH
+ 00000EE3  E8 00000000 E		call gotoxy
+ 00000EE8  E8 00000000 E		call writeChar
+					
+ 00000EED  FE 0D 000000E3 R		dec leftDL
+ 00000EF3  FE 05 000000E4 R		inc rightDL
+					
+ 00000EF9  50				push eax
+ 00000EFA  0F B6 05			movzx eax,delayBackground
+	   000000EA R
+ 00000F01  E8 00000000 E		call delay
+ 00000F06  58				pop eax
+ 00000F07  E2 B8		loop drawTopWall
+					
+ 00000F09  B9 0000003C			mov ecx,60 ;side walls
+ 00000F0E  FE 05 000000E5 R		inc leftDH
+ 00000F14  FE 05 000000E6 R		inc rightDH
+ 00000F1A  FE 05 000000E3 R		inc leftDL
+ 00000F20  FE 0D 000000E4 R		dec rightDL
+ 00000F26			drawSideWalls:
+ 00000F26  8A 15 000000E3 R		mov dl,leftDL
+ 00000F2C  8A 35 000000E5 R		mov dh,leftDH
+ 00000F32  E8 00000000 E		call gotoxy
+ 00000F37  0F B6 05			movzx eax, wallBlock
+	   000000E0 R
+ 00000F3E  E8 00000000 E		call writeChar
+ 00000F43  FE 05 000000E5 R		inc leftDH
+					
+ 00000F49  8A 15 000000E4 R		mov dl,rightDL
+ 00000F4F  8A 35 000000E6 R		mov dh,rightDH
+ 00000F55  E8 00000000 E		call gotoxy
+ 00000F5A  0F B6 05			movzx eax, wallBlock
+	   000000E0 R
+ 00000F61  E8 00000000 E		call writeChar
+ 00000F66  FE 05 000000E6 R		inc rightDH
+					
+ 00000F6C  50				push eax
+ 00000F6D  0F B6 05			movzx eax,delayBackground
+	   000000EA R
+ 00000F74  83 C0 05			add eax,5
+ 00000F77  E8 00000000 E		call delay
+ 00000F7C  58				pop eax
+ 00000F7D  E2 A7		loop drawSideWalls
+
+ 00000F7F  0F B6 05			movzx eax,wallBot ;bottom wall
+	   000000DF R
+ 00000F86  B9 0000004A			mov ecx,74
+
+ 00000F8B			drawBotWall:
+ 00000F8B  8A 15 000000E3 R		mov dl,leftDL
+ 00000F91  8A 35 000000E5 R		mov dh,leftDH
+ 00000F97  E8 00000000 E		call gotoxy
+ 00000F9C  E8 00000000 E		call writeChar
+					
+ 00000FA1  8A 15 000000E4 R		mov dl,rightDL
+ 00000FA7  8A 35 000000E6 R		mov dh,rightDH
+ 00000FAD  E8 00000000 E		call gotoxy
+ 00000FB2  E8 00000000 E		call writeChar
+					
+ 00000FB7  FE 05 000000E3 R		inc leftDL
+ 00000FBD  FE 0D 000000E4 R		dec rightDL
+					
+ 00000FC3  50				push eax
+ 00000FC4  0F B6 05			movzx eax,delayBackground
+	   000000EA R
+ 00000FCB  E8 00000000 E		call delay
+ 00000FD0  58				pop eax
+ 00000FD1  E2 B8		loop drawBotWall
+					
+ 00000FD3  C3			RET
+ 00000FD4			drawBorder ENDP
+
+
+ 00000FD4			createObstacle PROC
+ 00000FD4  60				pushad
+					
+ 00000FD5  0F B6 0D			movzx ecx,nextLevel
+	   00002333 R
+ 00000FDC			obstacles:
+ 00000FDC  51				push ecx
+ 00000FDD  B8 00000033			mov eax, cyan+(cyan*16)
+ 00000FE2  E8 00000000 E		call SetTextColor
+					;draw the top of the rectangle
+ 00000FE7  E8 00000019			call drawTop
+
+					;draw the middle of the rectangle
+ 00000FEC  E8 0000009A			call drawMid
+
+					;draw bottom of the rectangle
+ 00000FF1  E8 0000010C			call drawBot
+ 00000FF6  59				pop ecx
+ 00000FF7  E2 E3		loop obstacles
+					
+ 00000FF9  B8 0000007D			mov eax, lightmagenta+(lightgray*16)
+ 00000FFE  E8 00000000 E		call SetTextColor
+ 00001003  61				popad
+ 00001004  C3			RET
+ 00001005			createObstacle ENDP
+
+ 00001005			drawTop PROC
+ 00001005  B8 00000082			mov eax,130 ;get random number 0-130
+ 0000100A  E8 00000000 E		call RandomRange
+ 0000100F  83 C0 02			add eax,2   ;change to 2-132
+ 00001012  A2 0000233F R		mov ranX,al
+
+ 00001017  B8 0000002D			mov eax,45 ;get random number 0-44
+ 0000101C  E8 00000000 E		call RandomRange
+ 00001021  40				inc eax    ;change to 1-45
+ 00001022  A2 00002340 R		mov ranY,al
+
+ 00001027  8A 15 0000233F R		mov dl, ranX
+
+ 0000102D  8A 35 00002340 R		mov dh, ranY
+
+ 00001033  E8 00000000 E		call Gotoxy ;print top left at the random coordinates
+ 00001038  A0 00002334 R		mov al, topLeft
+ 0000103D  E8 00000000 E		call WriteChar
+					
+ 00001042  E8 00000109			call tangibleRectangle
+ 00001047  FE C2			inc dl
+					
+ 00001049  B8 0000000A			mov eax,10 ;0-9
+ 0000104E  E8 00000000 E		call randomRange
+ 00001053  83 C0 05			add eax,5  ;5-14
+ 00001056  8B C8			mov ecx,eax
+ 00001058  A2 0000233D R		mov sideScreen,al
+ 0000105D  FE 0D 0000233D R		dec sideScreen
+ 00001063  B8 00000000			mov eax,0
+
+ 00001068  A0 00002335 R		mov al, horiz ;print horizontal char random amount of times
+
+ 0000106D			topMid:
+ 0000106D  E8 00000000 E		call WriteChar
+ 00001072  E8 000000D9			call tangibleRectangle
+ 00001077  FE C2			inc dl
+ 00001079  E2 F2		LOOP topMid
+
+ 0000107B  A0 00002336 R		mov al, topRight ;print top right after random length
+ 00001080  E8 00000000 E		call WriteChar
+ 00001085  E8 000000C6			call tangibleRectangle
+
+					;call Clrscr
+
+ 0000108A  C3			RET
+ 0000108B			drawTop ENDP
+
+ 0000108B			drawMid PROC
+ 0000108B  8A 15 0000233F R		mov dl,ranX
+ 00001091  B8 0000000A			mov eax,10 ;0-9
+ 00001096  E8 00000000 E		call randomRange
+ 0000109B  83 C0 05			add eax,5  ;5-14
+ 0000109E  8B C8			mov ecx,eax
+ 000010A0  A2 0000233E R		mov botScreen,al
+ 000010A5  FE 0D 0000233E R		dec botScreen
+ 000010AB  B8 00000000			mov eax,0
+
+ 000010B0			mid:
+ 000010B0  FE C6			INC dh
+
+ 000010B2  E8 00000000 E		call Gotoxy
+ 000010B7  A0 00002337 R		mov al,side
+ 000010BC  E8 00000000 E		call WriteChar
+ 000010C1  E8 0000008A			call tangibleRectangle
+ 000010C6  FE C2			inc dl
+
+ 000010C8  51				push ecx
+
+ 000010C9  B9 00000000			mov ecx, 0
+ 000010CE  8A 0D 0000233D R		mov cl, sideScreen
+ 000010D4  FE C1			inc cl
+
+ 000010D6  A0 000000E2 R		mov al, space
+
+ 000010DB			midSpace:
+ 000010DB  E8 00000000 E		call WriteChar
+ 000010E0  E8 0000006B			call tangibleRectangle
+ 000010E5  FE C2			inc dl
+ 000010E7  E2 F2		LOOP midspace
+
+ 000010E9  59				pop ecx
+
+ 000010EA  A0 00002337 R		mov al, side
+ 000010EF  E8 00000000 E		call WriteChar
+ 000010F4  E8 00000057			call tangibleRectangle
+ 000010F9  8A 15 0000233F R		mov dl,ranX
+
+ 000010FF  E2 AF		LOOP mid
+
+ 00001101  C3			RET
+ 00001102			drawMid ENDP
+
+ 00001102			drawBot PROC
+ 00001102  FE C6			INC dh
+ 00001104  E8 00000000 E		call Gotoxy
+ 00001109  A0 00002339 R		mov al,botLeft
+ 0000110E  E8 00000000 E		call WriteChar
+ 00001113  E8 00000038			call tangibleRectangle
+ 00001118  FE C2			inc dl
+
+ 0000111A  B9 00000000			mov ecx, 0
+ 0000111F  8A 0D 0000233D R		mov cl, sideScreen
+ 00001125  FE C1			inc cl
+
+ 00001127  A0 00002335 R		mov al, horiz
+
+ 0000112C			bot:
+ 0000112C  E8 00000000 E		call WriteChar
+ 00001131  E8 0000001A			call tangibleRectangle
+ 00001136  FE C2			inc dl
+ 00001138  E2 F2		LOOP bot
+
+ 0000113A  A0 0000233A R		mov al, botRight
+ 0000113F  E8 00000000 E		call WriteChar
+ 00001144  E8 00000007			call tangibleRectangle
+ 00001149  8A 15 0000233F R		mov dl,ranX
+
+ 0000114F  C3			RET
+ 00001150			drawBot ENDP
+
+
+ 00001150			tangibleRectangle PROC
+ 00001150  56				push esi
+ 00001151  50				push eax
+ 00001152  53				push ebx
+					
+ 00001153  BE 000000FB R		mov esi,OFFSET board ;setup registers for 2d array math
+ 00001158  0F B6 C6			movzx eax,dh ;# of rows is 60
+ 0000115B  BB 00000092			mov ebx,146  ;# of columns is 146 (2 to 147)
+ 00001160  52				push edx
+ 00001161  F7 E3			mul ebx ;multiplys al which has the number of columns
+ 00001163  5A				pop edx
+ 00001164  0F B6 DA			movzx ebx,dl
+ 00001167  03 F0			add esi,eax
+ 00001169  03 F3			add esi,ebx ;esi will have board OFFSET + (currentRow * #columns) + currentColumn
+					
+ 0000116B  C6 06 01			mov BYTE ptr [esi],1
+					
+ 0000116E  5B				pop ebx
+ 0000116F  58				pop eax
+ 00001170  5E				pop esi
+ 00001171  C3			RET
+ 00001172			tangibleRectangle ENDP
+
+
+ 00001172			startZone PROC
+ 00001172  56				push esi
+ 00001173  50				push eax
+ 00001174  53				push ebx
+					
+ 00001175  B6 12			mov dh,18
+ 00001177  B2 32			mov dl,50
+ 00001179  B9 0000002E			mov ecx,46
+ 0000117E			reset:
+ 0000117E  BE 000000FB R		mov esi,OFFSET board ;setup registers for 2d array math
+ 00001183  0F B6 C6			movzx eax,dh ;# of rows is 60
+ 00001186  BB 00000092			mov ebx,146  ;# of columns is 146 (2 to 147)
+ 0000118B  52				push edx
+ 0000118C  F7 E3			mul ebx ;multiplys al which has the number of columns
+ 0000118E  5A				pop edx
+ 0000118F  0F B6 DA			movzx ebx,dl
+ 00001192  03 F0			add esi,eax
+ 00001194  03 F3			add esi,ebx ;esi will have board OFFSET + (currentRow * #columns) + currentColumn
+ 00001196  E8 00000000 E		call gotoxy
+ 0000119B			fixZone:
+ 0000119B  0F B6 05			movzx eax,space
+	   000000E2 R
+ 000011A2  E8 00000000 E		call writeChar
+ 000011A7  C6 06 00			mov BYTE ptr [esi],0
+ 000011AA  46				inc esi
+ 000011AB  E2 EE		loop fixZone
+
+ 000011AD  80 FE 2A			cmp dh,42
+ 000011B0  74 0B			je around
+ 000011B2  FE C6			inc dh
+ 000011B4  B2 32			mov dl,50
+ 000011B6  B9 0000002E			mov ecx,46
+ 000011BB  EB C1			jmp reset
+ 000011BD			around:
+					
+ 000011BD  5B				pop ebx
+ 000011BE  58				pop eax
+ 000011BF  5E				pop esi
+
+ 000011C0  C3			RET
+ 000011C1			startZone ENDP
+
+
+				END main
+Microsoft (R) Macro Assembler Version 6.15.8803		    12/04/23 15:54:08
+C:\CS2290\Lab10\Part1 Full Tron\FullTron - Lab10Part1.asm    Symbols 2 - 1
+
+
+
+
+Structures and Unions:
+
+                N a m e                  Size
+                                         Offset      Type
+
+CONSOLE_CURSOR_INFO  . . . . . .	 00000008
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  bVisible . . . . . . . . . . .	 00000004	 DWord
+CONSOLE_SCREEN_BUFFER_INFO . . .	 00000016
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  dwCursorPos  . . . . . . . . .	 00000004	 DWord
+  wAttributes  . . . . . . . . .	 00000008	 Word
+  srWindow . . . . . . . . . . .	 0000000A	 QWord
+  maxWinSize . . . . . . . . . .	 00000012	 DWord
+COORD  . . . . . . . . . . . . .	 00000004
+  X  . . . . . . . . . . . . . .	 00000000	 Word
+  Y  . . . . . . . . . . . . . .	 00000002	 Word
+FILETIME . . . . . . . . . . . .	 00000008
+  loDateTime . . . . . . . . . .	 00000000	 DWord
+  hiDateTime . . . . . . . . . .	 00000004	 DWord
+INPUT_RECORD . . . . . . . . . .	 00000014
+  eventType  . . . . . . . . . .	 00000000	 Word
+  event  . . . . . . . . . . . .	 00000004	  00000010
+KEY_EVENT_RECORD . . . . . . . .	 00000010
+  bKeyDown . . . . . . . . . . .	 00000000	 DWord
+  wRepeatCount . . . . . . . . .	 00000004	 Word
+  wVirtualKeyCode  . . . . . . .	 00000006	 Word
+  wVirtualScanCode . . . . . . .	 00000008	 Word
+  uChar  . . . . . . . . . . . .	 0000000A	 Word
+  UnicodeChar  . . . . . . . . .	 00000000	 Word
+  AsciiChar  . . . . . . . . . .	 00000000	 Byte
+  dwControlKeyState  . . . . . .	 0000000C	 DWord
+SMALL_RECT . . . . . . . . . . .	 00000008
+  Left . . . . . . . . . . . . .	 00000000	 Word
+  Top  . . . . . . . . . . . . .	 00000002	 Word
+  Right  . . . . . . . . . . . .	 00000004	 Word
+  Bottom . . . . . . . . . . . .	 00000006	 Word
+SYSTEMTIME . . . . . . . . . . .	 00000010
+  wYear  . . . . . . . . . . . .	 00000000	 Word
+  wMonth . . . . . . . . . . . .	 00000002	 Word
+  wDayOfWeek . . . . . . . . . .	 00000004	 Word
+  wDay . . . . . . . . . . . . .	 00000006	 Word
+  wHour  . . . . . . . . . . . .	 00000008	 Word
+  wMinute  . . . . . . . . . . .	 0000000A	 Word
+  wSecond  . . . . . . . . . . .	 0000000C	 Word
+  wMilliseconds  . . . . . . . .	 0000000E	 Word
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 DWord	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 00002341 DWord	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000011C1 DWord	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandtail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetKeyState  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLastError . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetTickCount . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Gotoxy . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapAlloc  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapCreate . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+PeekConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Random32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+RandomRange  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Randomize  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadChar . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleA . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadDec  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFile . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadHex  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadInt  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadKeyFlush . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadKey  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadString . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleScreenBufferSize . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTextAttribute  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTitleA . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleWindowInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetFilePointer . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteChar  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputAttribute  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputCharacterA . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteDec . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHexB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+changeBoard  . . . . . . . . . .	P Near	 0000011C _TEXT	Length= 00000043 Public STDCALL
+  noCrash  . . . . . . . . . . .	L Near	 00000155 _TEXT	
+  crashed  . . . . . . . . . . .	L Near	 0000015D _TEXT	
+changeScore  . . . . . . . . . .	P Near	 000001EB _TEXT	Length= 00000083 Public STDCALL
+  cont . . . . . . . . . . . . .	L Near	 0000023F _TEXT	
+controls . . . . . . . . . . . .	P Near	 00000DA8 _TEXT	Length= 00000090 Public STDCALL
+createObstacle . . . . . . . . .	P Near	 00000FD4 _TEXT	Length= 00000031 Public STDCALL
+  obstacles  . . . . . . . . . .	L Near	 00000FDC _TEXT	
+drawBorder . . . . . . . . . . .	P Near	 00000E6C _TEXT	Length= 00000168 Public STDCALL
+  drawBackground . . . . . . . .	L Near	 00000E86 _TEXT	
+  line . . . . . . . . . . . . .	L Near	 00000E91 _TEXT	
+  drawTopWall  . . . . . . . . .	L Near	 00000EC1 _TEXT	
+  drawSideWalls  . . . . . . . .	L Near	 00000F26 _TEXT	
+  drawBotWall  . . . . . . . . .	L Near	 00000F8B _TEXT	
+drawBot  . . . . . . . . . . . .	P Near	 00001102 _TEXT	Length= 0000004E Public STDCALL
+  bot  . . . . . . . . . . . . .	L Near	 0000112C _TEXT	
+drawMid  . . . . . . . . . . . .	P Near	 0000108B _TEXT	Length= 00000077 Public STDCALL
+  mid  . . . . . . . . . . . . .	L Near	 000010B0 _TEXT	
+  midSpace . . . . . . . . . . .	L Near	 000010DB _TEXT	
+drawTop  . . . . . . . . . . . .	P Near	 00001005 _TEXT	Length= 00000086 Public STDCALL
+  topMid . . . . . . . . . . . .	L Near	 0000106D _TEXT	
+lightBike  . . . . . . . . . . .	P Near	 0000026E _TEXT	Length= 00000A8B Public STDCALL
+  notLeft  . . . . . . . . . . .	L Near	 00000282 _TEXT	
+  notRight . . . . . . . . . . .	L Near	 0000028C _TEXT	
+  notUp  . . . . . . . . . . . .	L Near	 00000296 _TEXT	
+  turnUpLeft . . . . . . . . . .	L Near	 0000029B _TEXT	
+  quickUpLeft  . . . . . . . . .	L Near	 000002B8 _TEXT	
+  noUpLeftCrash  . . . . . . . .	L Near	 000002DF _TEXT	
+  contLeftEscape1  . . . . . . .	L Near	 0000034C _TEXT	
+  contLeftPause1 . . . . . . . .	L Near	 00000356 _TEXT	
+  contLeftUp1  . . . . . . . . .	L Near	 00000366 _TEXT	
+  contLeftDown1  . . . . . . . .	L Near	 00000376 _TEXT	
+  contTurnLeft1  . . . . . . . .	L Near	 00000376 _TEXT	
+  turnDownLeft . . . . . . . . .	L Near	 00000387 _TEXT	
+  quickDownLeft  . . . . . . . .	L Near	 000003A4 _TEXT	
+  noDownLeftCrash  . . . . . . .	L Near	 000003CB _TEXT	
+  contLeftEscape2  . . . . . . .	L Near	 00000438 _TEXT	
+  contLeftPause2 . . . . . . . .	L Near	 00000442 _TEXT	
+  contLeftUp2  . . . . . . . . .	L Near	 00000452 _TEXT	
+  contLeftDown2  . . . . . . . .	L Near	 00000462 _TEXT	
+  contTurnLeft2  . . . . . . . .	L Near	 00000462 _TEXT	
+  moveLeft . . . . . . . . . . .	L Near	 00000470 _TEXT	
+  afterTurnLeft  . . . . . . . .	L Near	 0000048D _TEXT	
+  noLeftCrash  . . . . . . . . .	L Near	 000004F3 _TEXT	
+  aroundLeftEscape . . . . . . .	L Near	 00000510 _TEXT	
+  aroundLeftPause  . . . . . . .	L Near	 0000051A _TEXT	
+  aroundLeftUp . . . . . . . . .	L Near	 00000524 _TEXT	
+  aroundLeftDown . . . . . . . .	L Near	 0000052E _TEXT	
+  noKeyLeft  . . . . . . . . . .	L Near	 0000052E _TEXT	
+  turnUpRight  . . . . . . . . .	L Near	 00000533 _TEXT	
+  quickUpRight . . . . . . . . .	L Near	 00000550 _TEXT	
+  noUpRightCrash . . . . . . . .	L Near	 00000577 _TEXT	
+  contRightEscape1 . . . . . . .	L Near	 000005E4 _TEXT	
+  contRightPause1  . . . . . . .	L Near	 000005EE _TEXT	
+  contRightUp1 . . . . . . . . .	L Near	 000005FE _TEXT	
+  contRightDown1 . . . . . . . .	L Near	 0000060E _TEXT	
+  contTurnRight1 . . . . . . . .	L Near	 0000060E _TEXT	
+  turnDownRight  . . . . . . . .	L Near	 0000061F _TEXT	
+  quickDownRight . . . . . . . .	L Near	 0000063C _TEXT	
+  noDownRightCrash . . . . . . .	L Near	 00000663 _TEXT	
+  contRightEscape2 . . . . . . .	L Near	 000006D0 _TEXT	
+  contRightPause2  . . . . . . .	L Near	 000006DA _TEXT	
+  contRightUp2 . . . . . . . . .	L Near	 000006EA _TEXT	
+  contRightDown2 . . . . . . . .	L Near	 000006FA _TEXT	
+  contTurnRight2 . . . . . . . .	L Near	 000006FA _TEXT	
+  moveRight  . . . . . . . . . .	L Near	 00000708 _TEXT	
+  afterTurnRight . . . . . . . .	L Near	 00000725 _TEXT	
+  noRightCrash . . . . . . . . .	L Near	 00000789 _TEXT	
+  aroundRightEscape  . . . . . .	L Near	 000007A6 _TEXT	
+  aroundRightPause . . . . . . .	L Near	 000007B0 _TEXT	
+  aroundRightUp  . . . . . . . .	L Near	 000007B7 _TEXT	
+  aroundRightDown  . . . . . . .	L Near	 000007C1 _TEXT	
+  noKeyRight . . . . . . . . . .	L Near	 000007C1 _TEXT	
+  turnRightUp  . . . . . . . . .	L Near	 000007C6 _TEXT	
+  quickRightUp . . . . . . . . .	L Near	 000007E3 _TEXT	
+  noRightUpCrash . . . . . . . .	L Near	 0000080F _TEXT	
+  contUpEscape1  . . . . . . . .	L Near	 0000087C _TEXT	
+  contUpPause1 . . . . . . . . .	L Near	 00000886 _TEXT	
+  contUpRight1 . . . . . . . . .	L Near	 00000896 _TEXT	
+  contUpLeft1  . . . . . . . . .	L Near	 000008A6 _TEXT	
+  contTurnUp1  . . . . . . . . .	L Near	 000008A6 _TEXT	
+  turnLeftUp . . . . . . . . . .	L Near	 000008B7 _TEXT	
+  quickLeftUp  . . . . . . . . .	L Near	 000008D4 _TEXT	
+  noLeftUpCrash  . . . . . . . .	L Near	 00000907 _TEXT	
+  contUpEscape2  . . . . . . . .	L Near	 00000974 _TEXT	
+  contUpPause2 . . . . . . . . .	L Near	 0000097E _TEXT	
+  contUpRight2 . . . . . . . . .	L Near	 0000098E _TEXT	
+  contUpLeft2  . . . . . . . . .	L Near	 0000099E _TEXT	
+  contTurnUp2  . . . . . . . . .	L Near	 0000099E _TEXT	
+  moveUp . . . . . . . . . . . .	L Near	 000009AC _TEXT	
+  afterTurnUp  . . . . . . . . .	L Near	 000009C9 _TEXT	
+  noUpCrash  . . . . . . . . . .	L Near	 00000A23 _TEXT	
+  aroundUpEscape . . . . . . . .	L Near	 00000A43 _TEXT	
+  aroundUpPause  . . . . . . . .	L Near	 00000A4D _TEXT	
+  aroundUpRight  . . . . . . . .	L Near	 00000A57 _TEXT	
+  aroundUpLeft . . . . . . . . .	L Near	 00000A61 _TEXT	
+  noKeyUp  . . . . . . . . . . .	L Near	 00000A61 _TEXT	
+  turnRightDown  . . . . . . . .	L Near	 00000A66 _TEXT	
+  quickRightDown . . . . . . . .	L Near	 00000A83 _TEXT	
+  noRightDownCrash . . . . . . .	L Near	 00000AAF _TEXT	
+  contDownEscape1  . . . . . . .	L Near	 00000B1C _TEXT	
+  contDownPause1 . . . . . . . .	L Near	 00000B26 _TEXT	
+  contDownRight1 . . . . . . . .	L Near	 00000B36 _TEXT	
+  contDownLeft1  . . . . . . . .	L Near	 00000B46 _TEXT	
+  contTurnDown1  . . . . . . . .	L Near	 00000B46 _TEXT	
+  turnLeftDown . . . . . . . . .	L Near	 00000B57 _TEXT	
+  quickLeftDown  . . . . . . . .	L Near	 00000B74 _TEXT	
+  noLeftDownCrash  . . . . . . .	L Near	 00000BA7 _TEXT	
+  contDownEscape2  . . . . . . .	L Near	 00000C14 _TEXT	
+  contDownPause2 . . . . . . . .	L Near	 00000C1E _TEXT	
+  contDownRight2 . . . . . . . .	L Near	 00000C2E _TEXT	
+  contDownLeft2  . . . . . . . .	L Near	 00000C3E _TEXT	
+  contTurnDown2  . . . . . . . .	L Near	 00000C3E _TEXT	
+  moveDown . . . . . . . . . . .	L Near	 00000C4C _TEXT	
+  afterTurnDown  . . . . . . . .	L Near	 00000C69 _TEXT	
+  noDownCrash  . . . . . . . . .	L Near	 00000CB8 _TEXT	
+  aroundDownEscape . . . . . . .	L Near	 00000CD5 _TEXT	
+  aroundDownPause  . . . . . . .	L Near	 00000CDF _TEXT	
+  aroundDownRight  . . . . . . .	L Near	 00000CE9 _TEXT	
+  aroundDownLeft . . . . . . . .	L Near	 00000CF3 _TEXT	
+  noKeyDown  . . . . . . . . . .	L Near	 00000CF3 _TEXT	
+main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000011C Public STDCALL
+  playGame . . . . . . . . . . .	L Near	 0000000A _TEXT	
+  aroundObstacle . . . . . . . .	L Near	 0000004F _TEXT	
+  redo . . . . . . . . . . . . .	L Near	 00000089 _TEXT	
+  erase  . . . . . . . . . . . .	L Near	 000000E0 _TEXT	
+  aroundNextLevel  . . . . . . .	L Near	 000000F7 _TEXT	
+  aroundEnter  . . . . . . . . .	L Near	 00000101 _TEXT	
+  endGame  . . . . . . . . . . .	L Near	 00000106 _TEXT	
+pauseGame  . . . . . . . . . . .	P Near	 00000D91 _TEXT	Length= 00000017 Public STDCALL
+  keepPaused . . . . . . . . . .	L Near	 00000D91 _TEXT	
+resetBoard . . . . . . . . . . .	P Near	 0000015F _TEXT	Length= 0000008C Public STDCALL
+  eraseTotal . . . . . . . . . .	L Near	 0000018D _TEXT	
+  continue . . . . . . . . . . .	L Near	 0000019B _TEXT	
+  eraseScore . . . . . . . . . .	L Near	 000001D2 _TEXT	
+  reset  . . . . . . . . . . . .	L Near	 000001E3 _TEXT	
+showTRON . . . . . . . . . . . .	P Near	 00000E38 _TEXT	Length= 00000034 Public STDCALL
+  hitSpace . . . . . . . . . . .	L Near	 00000E55 _TEXT	
+startGame  . . . . . . . . . . .	P Near	 00000CF9 _TEXT	Length= 00000098 Public STDCALL
+  hitSpace . . . . . . . . . . .	L Near	 00000D16 _TEXT	
+  erase  . . . . . . . . . . . .	L Near	 00000D41 _TEXT	
+startZone  . . . . . . . . . . .	P Near	 00001172 _TEXT	Length= 0000004F Public STDCALL
+  reset  . . . . . . . . . . . .	L Near	 0000117E _TEXT	
+  fixZone  . . . . . . . . . . .	L Near	 0000119B _TEXT	
+  around . . . . . . . . . . . .	L Near	 000011BD _TEXT	
+tangibleRectangle  . . . . . . .	P Near	 00001150 _TEXT	Length= 00000022 Public STDCALL
+wsprintfA  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+ALT_MASK . . . . . . . . . . . .	Number	 00000003h   
+CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
+CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
+CTRL_MASK  . . . . . . . . . . .	Number	 0000000Ch   
+CreateFile . . . . . . . . . . .	Text   	 CreateFileA
+DO_NOT_SHARE . . . . . . . . . .	Number	 00000000h   
+ENABLE_ECHO_INPUT  . . . . . . .	Number	 00000004h   
+ENABLE_LINE_INPUT  . . . . . . .	Number	 00000002h   
+ENABLE_MOUSE_INPUT . . . . . . .	Number	 00000010h   
+ENABLE_PROCESSED_INPUT . . . . .	Number	 00000001h   
+ENABLE_PROCESSED_OUTPUT  . . . .	Number	 00000001h   
+ENABLE_WINDOW_INPUT  . . . . . .	Number	 00000008h   
+ENABLE_WRAP_AT_EOL_OUTPUT  . . .	Number	 00000002h   
+FALSE  . . . . . . . . . . . . .	Number	 00000000h   
+FILE_APPEND_DATA . . . . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_ARCHIVE . . . . .	Number	 00000020h   
+FILE_ATTRIBUTE_COMPRESSED  . . .	Number	 00000800h   
+FILE_ATTRIBUTE_DEVICE  . . . . .	Number	 00000040h   
+FILE_ATTRIBUTE_DIRECTORY . . . .	Number	 00000010h   
+FILE_ATTRIBUTE_ENCRYPTED . . . .	Number	 00004000h   
+FILE_ATTRIBUTE_HIDDEN  . . . . .	Number	 00000002h   
+FILE_ATTRIBUTE_NORMAL  . . . . .	Number	 00000080h   
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED .	Number	 00002000h   
+FILE_ATTRIBUTE_OFFLINE . . . . .	Number	 00001000h   
+FILE_ATTRIBUTE_READONLY  . . . .	Number	 00000001h   
+FILE_ATTRIBUTE_REPARSE_POINT . .	Number	 00000400h   
+FILE_ATTRIBUTE_SPARSE_FILE . . .	Number	 00000200h   
+FILE_ATTRIBUTE_SYSTEM  . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_TEMPORARY . . . .	Number	 00000100h   
+FILE_BEGIN . . . . . . . . . . .	Number	 00000000h   
+FILE_CURRENT . . . . . . . . . .	Number	 00000001h   
+FILE_DELETE_CHILD  . . . . . . .	Number	 00000040h   
+FILE_END . . . . . . . . . . . .	Number	 00000002h   
+FILE_READ_DATA . . . . . . . . .	Number	 00000001h   
+FILE_SHARE_DELETE  . . . . . . .	Number	 00000004h   
+FILE_SHARE_READ  . . . . . . . .	Number	 00000001h   
+FILE_SHARE_WRITE . . . . . . . .	Number	 00000002h   
+FILE_WRITE_DATA  . . . . . . . .	Number	 00000002h   
+FOCUS_EVENT  . . . . . . . . . .	Number	 00000010h   
+GENERIC_ALL  . . . . . . . . . .	Number	 10000000h   
+GENERIC_EXECUTE  . . . . . . . .	Number	 20000000h   
+GENERIC_READ . . . . . . . . . .	Number	 -80000000h   
+GENERIC_WRITE  . . . . . . . . .	Number	 40000000h   
+GetCommandLine . . . . . . . . .	Text   	 GetCommandLineA
+HEAP_GENERATE_EXCEPTIONS . . . .	Number	 00000004h   
+HEAP_GROWABLE  . . . . . . . . .	Number	 00000002h   
+HEAP_NO_SERIALIZE  . . . . . . .	Number	 00000001h   
+HEAP_REALLOC_IN_PLACE_ONLY . . .	Number	 00000010h   
+HEAP_ZERO_MEMORY . . . . . . . .	Number	 00000008h   
+INVALID_HANDLE_VALUE . . . . . .	Number	 -00000001h   
+KBDOWN_FLAG  . . . . . . . . . .	Number	 00000001h   
+KEY_EVENT  . . . . . . . . . . .	Number	 00000001h   
+KEY_MASKS  . . . . . . . . . . .	Number	 0000001Fh   
+LIGHT_BLUE . . . . . . . . . . .	Number	 00000009h   
+LIGHT_CYAN . . . . . . . . . . .	Number	 0000000Bh   
+LIGHT_GRAY . . . . . . . . . . .	Number	 00000007h   
+LIGHT_GREEN  . . . . . . . . . .	Number	 0000000Ah   
+LIGHT_MAGENTA  . . . . . . . . .	Number	 0000000Dh   
+LIGHT_RED  . . . . . . . . . . .	Number	 0000000Ch   
+MENU_EVENT . . . . . . . . . . .	Number	 00000008h   
+MOUSE_EVENT  . . . . . . . . . .	Number	 00000002h   
+NULL . . . . . . . . . . . . . .	Number	 00000000h   
+OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
+OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
+PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
+ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
+ReadConsole  . . . . . . . . . .	Text   	 ReadConsoleA
+SHIFT_MASK . . . . . . . . . . .	Number	 00000010h   
+STD_ERROR_HANDLE . . . . . . . .	Number	 -0000000Ch   
+STD_INPUT_HANDLE . . . . . . . .	Number	 -0000000Ah   
+STD_OUTPUT_HANDLE  . . . . . . .	Number	 -0000000Bh   
+SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
+TRUE . . . . . . . . . . . . . .	Number	 00000001h   
+TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
+VK_11  . . . . . . . . . . . . .	Number	 000000BDh   
+VK_12  . . . . . . . . . . . . .	Number	 000000BBh   
+VK_ADD . . . . . . . . . . . . .	Number	 0000006Bh   
+VK_BACK  . . . . . . . . . . . .	Number	 00000008h   
+VK_CANCEL  . . . . . . . . . . .	Number	 00000003h   
+VK_CAPITAL . . . . . . . . . . .	Number	 00000014h   
+VK_CLEAR . . . . . . . . . . . .	Number	 0000000Ch   
+VK_CONTROL . . . . . . . . . . .	Number	 00000011h   
+VK_DECIMAL . . . . . . . . . . .	Number	 0000006Eh   
+VK_DELETE  . . . . . . . . . . .	Number	 0000002Eh   
+VK_DIVIDE  . . . . . . . . . . .	Number	 0000006Fh   
+VK_DOWN  . . . . . . . . . . . .	Number	 00000028h   
+VK_END . . . . . . . . . . . . .	Number	 00000023h   
+VK_ESCAPE  . . . . . . . . . . .	Number	 0000001Bh   
+VK_EXECUTE . . . . . . . . . . .	Number	 0000002Bh   
+VK_F10 . . . . . . . . . . . . .	Number	 00000079h   
+VK_F11 . . . . . . . . . . . . .	Number	 0000007Ah   
+VK_F12 . . . . . . . . . . . . .	Number	 0000007Bh   
+VK_F13 . . . . . . . . . . . . .	Number	 0000007Ch   
+VK_F14 . . . . . . . . . . . . .	Number	 0000007Dh   
+VK_F15 . . . . . . . . . . . . .	Number	 0000007Eh   
+VK_F16 . . . . . . . . . . . . .	Number	 0000007Fh   
+VK_F17 . . . . . . . . . . . . .	Number	 00000080h   
+VK_F18 . . . . . . . . . . . . .	Number	 00000081h   
+VK_F19 . . . . . . . . . . . . .	Number	 00000082h   
+VK_F1  . . . . . . . . . . . . .	Number	 00000070h   
+VK_F20 . . . . . . . . . . . . .	Number	 00000083h   
+VK_F21 . . . . . . . . . . . . .	Number	 00000084h   
+VK_F22 . . . . . . . . . . . . .	Number	 00000085h   
+VK_F23 . . . . . . . . . . . . .	Number	 00000086h   
+VK_F24 . . . . . . . . . . . . .	Number	 00000087h   
+VK_F2  . . . . . . . . . . . . .	Number	 00000071h   
+VK_F3  . . . . . . . . . . . . .	Number	 00000072h   
+VK_F4  . . . . . . . . . . . . .	Number	 00000073h   
+VK_F5  . . . . . . . . . . . . .	Number	 00000074h   
+VK_F6  . . . . . . . . . . . . .	Number	 00000075h   
+VK_F7  . . . . . . . . . . . . .	Number	 00000076h   
+VK_F8  . . . . . . . . . . . . .	Number	 00000077h   
+VK_F9  . . . . . . . . . . . . .	Number	 00000078h   
+VK_HELP  . . . . . . . . . . . .	Number	 0000002Fh   
+VK_HOME  . . . . . . . . . . . .	Number	 00000024h   
+VK_INSERT  . . . . . . . . . . .	Number	 0000002Dh   
+VK_LBUTTON . . . . . . . . . . .	Number	 00000001h   
+VK_LEFT  . . . . . . . . . . . .	Number	 00000025h   
+VK_MENU  . . . . . . . . . . . .	Number	 00000012h   
+VK_MULTIPLY  . . . . . . . . . .	Number	 0000006Ah   
+VK_NEXT  . . . . . . . . . . . .	Number	 00000022h   
+VK_NUMLOCK . . . . . . . . . . .	Number	 00000090h   
+VK_NUMPAD0 . . . . . . . . . . .	Number	 00000060h   
+VK_NUMPAD1 . . . . . . . . . . .	Number	 00000061h   
+VK_NUMPAD2 . . . . . . . . . . .	Number	 00000062h   
+VK_NUMPAD3 . . . . . . . . . . .	Number	 00000063h   
+VK_NUMPAD4 . . . . . . . . . . .	Number	 00000064h   
+VK_NUMPAD5 . . . . . . . . . . .	Number	 00000065h   
+VK_NUMPAD6 . . . . . . . . . . .	Number	 00000066h   
+VK_NUMPAD7 . . . . . . . . . . .	Number	 00000067h   
+VK_NUMPAD8 . . . . . . . . . . .	Number	 00000068h   
+VK_NUMPAD9 . . . . . . . . . . .	Number	 00000069h   
+VK_PAUSE . . . . . . . . . . . .	Number	 00000013h   
+VK_PRINT . . . . . . . . . . . .	Number	 0000002Ah   
+VK_PRIOR . . . . . . . . . . . .	Number	 00000021h   
+VK_RBUTTON . . . . . . . . . . .	Number	 00000002h   
+VK_RETURN  . . . . . . . . . . .	Number	 0000000Dh   
+VK_RIGHT . . . . . . . . . . . .	Number	 00000027h   
+VK_SCROLL  . . . . . . . . . . .	Number	 00000091h   
+VK_SEPARATER . . . . . . . . . .	Number	 0000006Ch   
+VK_SHIFT . . . . . . . . . . . .	Number	 00000010h   
+VK_SNAPSHOT  . . . . . . . . . .	Number	 0000002Ch   
+VK_SPACE . . . . . . . . . . . .	Number	 00000020h   
+VK_SUBTRACT  . . . . . . . . . .	Number	 0000006Dh   
+VK_TAB . . . . . . . . . . . . .	Number	 00000009h   
+VK_UP  . . . . . . . . . . . . .	Number	 00000026h   
+WINDOW_BUFFER_SIZE_EVENT . . . .	Number	 00000004h   
+WriteConsoleOutputCharacter  . .	Text   	 WriteConsoleOutputCharacterA
+WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
+arro . . . . . . . . . . . . . .	Byte	 00000046 _DATA	
+bikeDH . . . . . . . . . . . . .	Byte	 000000E8 _DATA	
+bikeDL . . . . . . . . . . . . .	Byte	 000000E7 _DATA	
+bikeHorz . . . . . . . . . . . .	Byte	 000000D3 _DATA	
+bikeLeftDown . . . . . . . . . .	Byte	 000000D4 _DATA	
+bikeLeftUp . . . . . . . . . . .	Byte	 000000D6 _DATA	
+bikeRightDown  . . . . . . . . .	Byte	 000000D7 _DATA	
+bikeRightUp  . . . . . . . . . .	Byte	 000000D5 _DATA	
+bikeVert . . . . . . . . . . . .	Byte	 000000D2 _DATA	
+black  . . . . . . . . . . . . .	Number	 00000000h   
+blue . . . . . . . . . . . . . .	Number	 00000001h   
+board  . . . . . . . . . . . . .	Byte	 000000FB _DATA	
+borderBot  . . . . . . . . . . .	Byte	 0000233C _DATA	
+borderSide . . . . . . . . . . .	Byte	 0000233B _DATA	
+botLeft  . . . . . . . . . . . .	Byte	 00002339 _DATA	
+botRight . . . . . . . . . . . .	Byte	 0000233A _DATA	
+botScreen  . . . . . . . . . . .	Byte	 0000233E _DATA	
+brown  . . . . . . . . . . . . .	Number	 00000006h   
+cols . . . . . . . . . . . . . .	Byte	 000000EE _DATA	
+controlMenu  . . . . . . . . . .	Byte	 00000005 _DATA	
+crashEnd . . . . . . . . . . . .	Byte	 000000EC _DATA	
+crash  . . . . . . . . . . . . .	Byte	 000000E1 _DATA	
+cyan . . . . . . . . . . . . . .	Number	 00000003h   
+delayBackground  . . . . . . . .	Byte	 000000EA _DATA	
+delayBike  . . . . . . . . . . .	Byte	 000000E9 _DATA	
+delayReadKey . . . . . . . . . .	Byte	 000000EB _DATA	
+done . . . . . . . . . . . . . .	L Near	 00000CF8 _TEXT	
+escp . . . . . . . . . . . . . .	Byte	 00000030 _DATA	
+exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
+gray . . . . . . . . . . . . . .	Number	 00000008h   
+green  . . . . . . . . . . . . .	Number	 00000002h   
+horiz  . . . . . . . . . . . . .	Byte	 00002335 _DATA	
+leftDH . . . . . . . . . . . . .	Byte	 000000E5 _DATA	
+leftDL . . . . . . . . . . . . .	Byte	 000000E3 _DATA	
+levelStr . . . . . . . . . . . .	Byte	 000000C0 _DATA	
+lightBlue  . . . . . . . . . . .	Number	 00000009h   
+lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
+lightGray  . . . . . . . . . . .	Number	 00000007h   
+lightGreen . . . . . . . . . . .	Number	 0000000Ah   
+lightMagenta . . . . . . . . . .	Number	 0000000Dh   
+lightRed . . . . . . . . . . . .	Number	 0000000Ch   
+magenta  . . . . . . . . . . . .	Number	 00000005h   
+nextLevel  . . . . . . . . . . .	Byte	 00002333 _DATA	
+pushSpace  . . . . . . . . . . .	Byte	 00000065 _DATA	
+ranX . . . . . . . . . . . . . .	Byte	 0000233F _DATA	
+ranY . . . . . . . . . . . . . .	Byte	 00002340 _DATA	
+red  . . . . . . . . . . . . . .	Number	 00000004h   
+restart  . . . . . . . . . . . .	Byte	 0000007E _DATA	
+rightDH  . . . . . . . . . . . .	Byte	 000000E6 _DATA	
+rightDL  . . . . . . . . . . . .	Byte	 000000E4 _DATA	
+rows . . . . . . . . . . . . . .	Byte	 000000ED _DATA	
+scoreCheck . . . . . . . . . . .	DWord	 000000F7 _DATA	
+scoreStr . . . . . . . . . . . .	Byte	 000000B7 _DATA	
+score  . . . . . . . . . . . . .	DWord	 000000F3 _DATA	
+sideScreen . . . . . . . . . . .	Byte	 0000233D _DATA	
+side . . . . . . . . . . . . . .	Byte	 00002337 _DATA	
+spaceRect  . . . . . . . . . . .	Byte	 00002338 _DATA	
+space  . . . . . . . . . . . . .	Byte	 000000E2 _DATA	
+spc  . . . . . . . . . . . . . .	Byte	 00000018 _DATA	
+topLeft  . . . . . . . . . . . .	Byte	 00002334 _DATA	
+topRight . . . . . . . . . . . .	Byte	 00002336 _DATA	
+totalScore . . . . . . . . . . .	DWord	 000000EF _DATA	
+totalStr . . . . . . . . . . . .	Byte	 000000C9 _DATA	
+trailHorz  . . . . . . . . . . .	Byte	 000000D9 _DATA	
+trailLeftDown  . . . . . . . . .	Byte	 000000DA _DATA	
+trailLeftUp  . . . . . . . . . .	Byte	 000000DB _DATA	
+trailRightDown . . . . . . . . .	Byte	 000000DD _DATA	
+trailRightUp . . . . . . . . . .	Byte	 000000DC _DATA	
+trailVert  . . . . . . . . . . .	Byte	 000000D8 _DATA	
+tronTitle  . . . . . . . . . . .	Byte	 00000000 _DATA	
+wallBlock  . . . . . . . . . . .	Byte	 000000E0 _DATA	
+wallBot  . . . . . . . . . . . .	Byte	 000000DF _DATA	
+wallTop  . . . . . . . . . . . .	Byte	 000000DE _DATA	
+white  . . . . . . . . . . . . .	Number	 0000000Fh   
+wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
+yellow . . . . . . . . . . . . .	Number	 0000000Eh   
+
+	   0 Warnings
+	   0 Errors
