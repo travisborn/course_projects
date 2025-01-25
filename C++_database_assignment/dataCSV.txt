@@ -1,0 +1,9 @@
+ID,FNAME,LNAME,AGE,BALANCE,HEIGHT,WEIGHT,Tester
+I,A,A,I,F,T,G,F
+2,Franco,C,23,43,34.67,65,hi
+05,Travis,Born,36,54.56,56,76,78
+12,John,Smith,45,67.8,87,32,34
+67,Libero,Ficocelli,53,456.27,12,32,34
+80,Jonathan,Born,3,0.54,34,54,24
+88,test,test,test,test,98,68,645
+101,Owen,Helped,Me,SolveThis,123,435,456

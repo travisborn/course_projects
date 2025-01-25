@@ -1,0 +1,5 @@
+ID,FNAME,LNAME,AGE,BALANCE
+I,A,A,I,F
+23,Franco,Carlacci,50,23.4
+12,John,Smith,45,67.8
+67,Libero,Ficocelli,53,456.27
